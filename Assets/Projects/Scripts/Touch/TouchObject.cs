@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Projects.Scripts
+namespace Projects.Scripts.Touch
 {
     public class TouchObject : MonoBehaviour
     {
