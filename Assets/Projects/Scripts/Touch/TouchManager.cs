@@ -21,8 +21,7 @@ namespace Projects.Scripts.Touch
             if (raycastHit.collider == null) return;
 
             if (!raycastHit.collider.TryGetComponent<TouchableObject>(out var obj)) return;
-
-            Debug.Log($"[TouchManager] 6. {raycastHit.collider.name} is touched!");
+            
             obj.Execute();
         }
 
