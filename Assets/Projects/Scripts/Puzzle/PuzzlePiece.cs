@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Projects.Scripts.Control;
 using UnityEngine;
 
@@ -19,20 +20,22 @@ namespace Projects.Scripts.Puzzle
         [SerializeField] private PuzzleGridView gridView;
 
         [Header("Visual Settings")]
-        [Tooltip("ピースのセルに使用するスプライト")]
-        [SerializeField] private Sprite cellSprite;
-
-        [Tooltip("ピースの色")]
-        [SerializeField] private Color pieceColor = new(0.2f, 0.5f, 0.9f, 1f);
-
         [Tooltip("ドラッグ中のスケール倍率")]
         [SerializeField] private float dragScale = 1.0f;
+
+        [Tooltip("ドラッグ中の透明度（0.0～1.0）")]
+        [SerializeField] private float dragAlpha = 0.5f;
+
+        [Tooltip("プレビュー（ゴースト）の不透明度（0.0～1.0）")]
+        [SerializeField, Range(0f, 1f)] private float previewAlpha = 0.4f;
 
         private Vector2 _dragOffset;
         private Vector3 _originalScale;
         private Vector2 _spawnPosition;
         private bool _isPlaced;
         private Action<PuzzlePiece> _onPlacedCallback;
+        private readonly List<SpriteRenderer> _spriteRenderers = new();
+        private GameObject _ghostObject;
 
         /// <summary>
         /// このピースの形状データ
@@ -65,11 +68,11 @@ namespace Projects.Scripts.Puzzle
         }
 
         /// <summary>
-        /// ピースの形状に基づいてセルのSpriteRendererを生成する
+        /// ピースの形状に基づいてビジュアルを生成する
         /// </summary>
         private void CreatePieceVisuals()
         {
-            if (shape == null || cellSprite == null) return;
+            if (shape == null) return;
 
             var filledCells = shape.GetFilledCells();
             var cellSize = gridView != null ? gridView.CellSize : 1f;
@@ -77,29 +80,46 @@ namespace Projects.Scripts.Puzzle
             // ピースの中心を計算
             var center = CalculatePieceCenter(filledCells, cellSize);
 
-            foreach (var cell in filledCells)
-            {
-                var cellObj = new GameObject($"PieceCell_{cell.x}_{cell.y}");
-                cellObj.transform.SetParent(transform, false);
-                cellObj.transform.localPosition = new Vector3(
-                    cell.x * cellSize - center.x,
-                    cell.y * cellSize - center.y,
-                    0
-                );
-
-                var sr = cellObj.AddComponent<SpriteRenderer>();
-                sr.sprite = cellSprite;
-                sr.color = pieceColor;
-                sr.sortingOrder = 10;
-
-                // スプライトサイズをcellSizeに合わせる
-                var spriteSize = cellSprite.bounds.size;
-                var scale = cellSize / Mathf.Max(spriteSize.x, spriteSize.y);
-                cellObj.transform.localScale = Vector3.one * (scale * 0.9f);
-            }
-
             // ドラッグ検出用のColliderを追加
             EnsureCollider(filledCells, cellSize, center);
+
+            // 食器スプライトの表示
+            CreateDishOverlay(cellSize, center);
+        }
+
+        /// <summary>
+        /// 食器スプライトをピースの中心にオーバーレイ表示する
+        /// </summary>
+        private void CreateDishOverlay(float cellSize, Vector2 center)
+        {
+            var sprite = shape.GetEffectiveSprite();
+            if (sprite == null) return;
+
+            var dishObj = new GameObject("DishOverlay");
+            dishObj.transform.SetParent(transform, false);
+
+            // 形状のバウンディングボックスの中心に配置
+            var bboxCenter = new Vector3(
+                (shape.Width - 1) * cellSize / 2f - center.x,
+                (shape.Height - 1) * cellSize / 2f - center.y,
+                0f
+            );
+            dishObj.transform.localPosition = bboxCenter;
+
+            var sr = dishObj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = shape.DishColor;
+            sr.sortingOrder = 10;
+            _spriteRenderers.Add(sr);
+
+            // スプライトのピクセルサイズから自動スケーリング
+            // 形状のバウンディングボックス（width * cellSize × height * cellSize）に収まるようにする
+            var spriteSize = sprite.bounds.size;
+            var targetWidth = shape.Width * cellSize;
+            var targetHeight = shape.Height * cellSize;
+            var scaleX = targetWidth / spriteSize.x;
+            var scaleY = targetHeight / spriteSize.y;
+            dishObj.transform.localScale = new Vector3(scaleX, scaleY, 1f);
         }
 
         /// <summary>
@@ -154,6 +174,7 @@ namespace Projects.Scripts.Puzzle
 
             _dragOffset = (Vector2)transform.position - pos;
             transform.localScale = _originalScale * dragScale;
+            SetAlpha(dragAlpha);
         }
 
         public void OnInputDrag(Vector2 pos)
@@ -162,11 +183,11 @@ namespace Projects.Scripts.Puzzle
 
             transform.position = pos + _dragOffset;
 
-            // グリッド上でのプレビュー表示
+            // グリッド上にゴーストプレビューを表示
             if (gridView != null)
             {
                 var gridPos = GetGridOrigin(pos + _dragOffset);
-                gridView.ShowPreview(shape, gridPos);
+                UpdateGhostPreview(gridPos);
             }
         }
 
@@ -175,6 +196,8 @@ namespace Projects.Scripts.Puzzle
             if (_isPlaced) return;
 
             transform.localScale = _originalScale;
+            SetAlpha(1f);
+            DestroyGhost();
 
             if (gridView == null) return;
 
@@ -192,15 +215,100 @@ namespace Projects.Scripts.Puzzle
 
                 // 配置完了コールバックを発火
                 _onPlacedCallback?.Invoke(this);
-
-                // ライン消去チェック TODO: 終了の自由化
-                //gridView.Grid.ClearCompletedLines();
             }
             else
             {
                 // 配置失敗: 元の位置に戻す
                 transform.position = _spawnPosition;
-                gridView.ClearPreview();
+            }
+        }
+
+        /// <summary>
+        /// 全SpriteRendererのアルファ値を設定する
+        /// </summary>
+        private void SetAlpha(float alpha)
+        {
+            foreach (var sr in _spriteRenderers)
+            {
+                if (sr == null) continue;
+                var c = sr.color;
+                c.a = alpha;
+                sr.color = c;
+            }
+        }
+
+        /// <summary>
+        /// ゴーストプレビューの位置を更新する。未作成なら作成する。
+        /// </summary>
+        private void UpdateGhostPreview(Vector2Int gridOrigin)
+        {
+            if (_ghostObject == null)
+                CreateGhost();
+
+            // ゴーストをスナップ位置に移動
+            var filledCells = shape.GetFilledCells();
+            var cellSize = gridView.CellSize;
+            var center = CalculatePieceCenter(filledCells, cellSize);
+
+            var gridWorldPos = gridView.GridToWorldPosition(gridOrigin);
+            var snappedPos = new Vector2(
+                gridWorldPos.x + center.x,
+                gridWorldPos.y + center.y
+            );
+
+            _ghostObject.transform.position = new Vector3(snappedPos.x, snappedPos.y, transform.position.z);
+        }
+
+        /// <summary>
+        /// ピースの半透明コピー（ゴースト）を作成する
+        /// </summary>
+        private void CreateGhost()
+        {
+            if (shape == null) return;
+
+            _ghostObject = new GameObject("GhostPreview");
+
+            var filledCells = shape.GetFilledCells();
+            var cellSize = gridView != null ? gridView.CellSize : 1f;
+            var center = CalculatePieceCenter(filledCells, cellSize);
+
+            // 食器スプライトのゴーストを生成
+            var sprite = shape.GetEffectiveSprite();
+            if (sprite != null)
+            {
+                var dishObj = new GameObject("GhostDishOverlay");
+                dishObj.transform.SetParent(_ghostObject.transform, false);
+
+                var bboxCenter = new Vector3(
+                    (shape.Width - 1) * cellSize / 2f - center.x,
+                    (shape.Height - 1) * cellSize / 2f - center.y,
+                    0f
+                );
+                dishObj.transform.localPosition = bboxCenter;
+
+                var sr = dishObj.AddComponent<SpriteRenderer>();
+                sr.sprite = sprite;
+                sr.color = new Color(shape.DishColor.r, shape.DishColor.g, shape.DishColor.b, previewAlpha);
+                sr.sortingOrder = 5;
+
+                var spriteSize = sprite.bounds.size;
+                var targetWidth = shape.Width * cellSize;
+                var targetHeight = shape.Height * cellSize;
+                var scaleX = targetWidth / spriteSize.x;
+                var scaleY = targetHeight / spriteSize.y;
+                dishObj.transform.localScale = new Vector3(scaleX, scaleY, 1f);
+            }
+        }
+
+        /// <summary>
+        /// ゴーストプレビューを破棄する
+        /// </summary>
+        private void DestroyGhost()
+        {
+            if (_ghostObject != null)
+            {
+                Destroy(_ghostObject);
+                _ghostObject = null;
             }
         }
 
@@ -233,7 +341,7 @@ namespace Projects.Scripts.Puzzle
             var filledCells = shape.GetFilledCells();
             var cellSize = gridView.CellSize;
             var center = CalculatePieceCenter(filledCells, cellSize);
-            
+
             // ピースの中心オフセットをそのまま加算する
             var gridWorldPos = gridView.GridToWorldPosition(gridOrigin);
             var snappedPos = new Vector2(

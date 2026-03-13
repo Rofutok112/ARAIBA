@@ -5,6 +5,12 @@ using Random = UnityEngine.Random;
 
 namespace Projects.Scripts.Puzzle
 {
+    public enum SlotLayoutDirection
+    {
+        Horizontal,
+        Vertical
+    }
+
     /// <summary>
     /// パズルピースを生成し、スロットに保持するシステム。
     /// 指定されたスロット位置にピースを生成し、
@@ -31,6 +37,9 @@ namespace Projects.Scripts.Puzzle
 
         [Tooltip("スロットを配置する基準位置からのオフセット（ローカル座標）")]
         [SerializeField] private Vector3 slotAreaOffset = new(0f, -5f, 0f);
+
+        [Tooltip("スロットの並び方向")]
+        [SerializeField] private SlotLayoutDirection slotDirection = SlotLayoutDirection.Horizontal;
 
         [Header("Generation Options")]
         [Tooltip("trueの場合、全スロットが空になったら一括生成。falseの場合、配置されたスロットを即座に補充")]
@@ -118,14 +127,17 @@ namespace Projects.Scripts.Puzzle
             _slotPositions = new Vector3[slotCount];
 
             // スロットを中央揃えで配置
-            var totalWidth = (slotCount - 1) * slotSpacing;
-            var startX = -totalWidth / 2f;
+            var totalLength = (slotCount - 1) * slotSpacing;
+            var startPos = -totalLength / 2f;
 
             for (var i = 0; i < slotCount; i++)
             {
-                _slotPositions[i] = transform.TransformPoint(
-                    slotAreaOffset + new Vector3(startX + i * slotSpacing, 0f, 0f)
-                );
+                // Horizontal: 左から右へ, Vertical: 上から下へ（インデックス0が上）
+                var offset = slotDirection == SlotLayoutDirection.Horizontal
+                    ? new Vector3(startPos + i * slotSpacing, 0f, 0f)
+                    : new Vector3(0f, -startPos - i * slotSpacing, 0f); // Y軸は下がマイナスになるよう反転
+
+                _slotPositions[i] = transform.TransformPoint(slotAreaOffset + offset);
             }
         }
 
@@ -154,11 +166,19 @@ namespace Projects.Scripts.Puzzle
                 if (_slots[i] != null && !_slots[i].IsPlaced)
                     continue;
 
-                // 以前のピースがあれば破棄
+                // 以前のピースがあれば処理
                 if (_slots[i] != null)
                 {
-                    Destroy(_slots[i].gameObject);
-                    _slots[i] = null;
+                    if (_slots[i].IsPlaced)
+                    {
+                        // 配置済みのピースはグリッド上に残すため、スロットから切り離すだけ
+                        _slots[i] = null;
+                    }
+                    else
+                    {
+                        Destroy(_slots[i].gameObject);
+                        _slots[i] = null;
+                    }
                 }
 
                 var shape = SelectShape(usedShapes);
@@ -234,7 +254,8 @@ namespace Projects.Scripts.Puzzle
                 {
                     if (_slots[i] == piece)
                     {
-                        Destroy(_slots[i].gameObject);
+                        // 配置済みのピースはグリッド上に残すため、スロットから切り離すだけ
+                        _slots[i] = null;
                         var usedShapes = new HashSet<int>();
                         var shape = SelectShape(usedShapes);
                         if (shape != null)
@@ -277,17 +298,26 @@ namespace Projects.Scripts.Puzzle
 
         /// <summary>
         /// グリッド上に配置済みのピースGameObjectを削除する
+        /// （スロットから切り離された配置済みピースも含む）
         /// </summary>
         private void CleanupPlacedPieces()
         {
-            // スロット内の配置済みピースを削除
-            if (_slots == null) return;
+            // 子オブジェクトのPuzzlePieceを全検索し、配置済みのものを削除
+            var pieces = GetComponentsInChildren<PuzzlePiece>();
+            foreach (var piece in pieces)
+            {
+                if (piece.IsPlaced)
+                {
+                    Destroy(piece.gameObject);
+                }
+            }
 
+            // スロット内の配置済みピース参照もクリア
+            if (_slots == null) return;
             for (var i = 0; i < _slots.Length; i++)
             {
                 if (_slots[i] != null && _slots[i].IsPlaced)
                 {
-                    Destroy(_slots[i].gameObject);
                     _slots[i] = null;
                 }
             }
@@ -327,18 +357,19 @@ namespace Projects.Scripts.Puzzle
         {
             if (slotCount <= 0) return;
 
-            var totalWidth = (slotCount - 1) * slotSpacing;
-            var startX = -totalWidth / 2f;
+            var totalLength = (slotCount - 1) * slotSpacing;
+            var startPos = -totalLength / 2f;
 
             Gizmos.color = new Color(0.2f, 0.8f, 0.3f, 0.5f);
 
             for (var i = 0; i < slotCount; i++)
             {
-                var pos = transform.TransformPoint(
-                    slotAreaOffset + new Vector3(startX + i * slotSpacing, 0f, 0f)
-                );
-                Gizmos.DrawWireCube(pos, Vector3.one * 2f);
-                Gizmos.DrawIcon(pos, "d_Prefab Icon", true);
+                var offset = slotDirection == SlotLayoutDirection.Horizontal
+                    ? new Vector3(startPos + i * slotSpacing, 0f, 0f)
+                    : new Vector3(0f, -startPos - i * slotSpacing, 0f);
+
+                var pos = transform.TransformPoint(slotAreaOffset + offset);
+                Gizmos.DrawSphere(pos, 0.1f);
             }
         }
 #endif

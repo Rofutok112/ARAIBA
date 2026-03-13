@@ -4,7 +4,7 @@ namespace Projects.Scripts.Puzzle
 {
     /// <summary>
     /// PuzzleGridの表示を管理するMonoBehaviour。
-    /// グリッドのセルをSpriteRendererで表示し、占有状態に応じて色を変える。
+    /// グリッドのセルをSpriteRendererで表示する。
     /// </summary>
     public class PuzzleGridView : MonoBehaviour
     {
@@ -19,17 +19,8 @@ namespace Projects.Scripts.Puzzle
         [Tooltip("セルに使用するスプライト（正方形推奨）")]
         [SerializeField] private Sprite cellSprite;
 
-        [Tooltip("空のセルの色")]
-        [SerializeField] private Color emptyColor = new(0.9f, 0.9f, 0.9f, 1f);
-
-        [Tooltip("埋まっているセルの色")]
-        [SerializeField] private Color occupiedColor = new(0.3f, 0.6f, 1f, 1f);
-
-        [Tooltip("配置プレビュー（配置可能）の色")]
-        [SerializeField] private Color previewValidColor = new(0.3f, 1f, 0.3f, 0.5f);
-
-        [Tooltip("配置プレビュー（配置不可能）の色")]
-        [SerializeField] private Color previewInvalidColor = new(1f, 0.3f, 0.3f, 0.5f);
+        [Tooltip("セルの色")]
+        [SerializeField] private Color cellColor = new(0.9f, 0.9f, 0.9f, 1f);
 
         private SpriteRenderer[,] _cellRenderers;
 
@@ -51,14 +42,7 @@ namespace Projects.Scripts.Puzzle
         private void Awake()
         {
             Grid = new PuzzleGrid(gridSize);
-            Grid.OnGridChanged += RefreshView;
             CreateGridVisuals();
-        }
-
-        private void OnDestroy()
-        {
-            if (Grid != null)
-                Grid.OnGridChanged -= RefreshView;
         }
 
         /// <summary>
@@ -89,14 +73,13 @@ namespace Projects.Scripts.Puzzle
                     // スプライトのサイズをcellSizeに合わせる
                     var sr = cellObj.AddComponent<SpriteRenderer>();
                     sr.sprite = cellSprite;
-                    sr.color = emptyColor;
+                    sr.color = cellColor;
 
                     if (cellSprite != null)
                     {
                         var spriteSize = cellSprite.bounds.size;
                         var scale = cellSize / Mathf.Max(spriteSize.x, spriteSize.y);
-                        // 少し隙間を作る（グリッド線の代わり）
-                        cellObj.transform.localScale = Vector3.one * (scale * 1f);
+                        cellObj.transform.localScale = Vector3.one * scale;
                     }
 
                     _cellRenderers[x, y] = sr;
@@ -105,7 +88,7 @@ namespace Projects.Scripts.Puzzle
         }
 
         /// <summary>
-        /// グリッドの表示を現在のデータに基づいて更新する
+        /// グリッドの表示をリセットする（全セルを通常の色に戻す）
         /// </summary>
         public void RefreshView()
         {
@@ -113,41 +96,11 @@ namespace Projects.Scripts.Puzzle
             {
                 for (var x = 0; x < gridSize; x++)
                 {
-                    _cellRenderers[x, y].color = Grid.IsOccupied(x, y) ? occupiedColor : emptyColor;
+                    _cellRenderers[x, y].color = cellColor;
                 }
             }
         }
 
-        /// <summary>
-        /// ピースの配置プレビューを表示する
-        /// </summary>
-        public void ShowPreview(PuzzlePieceShape shape, Vector2Int origin)
-        {
-            // まず通常表示に戻す
-            RefreshView();
-
-            var canPlace = Grid.CanPlace(shape, origin);
-            var previewColor = canPlace ? previewValidColor : previewInvalidColor;
-
-            var filledCells = shape.GetFilledCells();
-            foreach (var cell in filledCells)
-            {
-                var gx = origin.x + cell.x;
-                var gy = origin.y + cell.y;
-                if (Grid.IsInBounds(gx, gy))
-                {
-                    _cellRenderers[gx, gy].color = previewColor;
-                }
-            }
-        }
-
-        /// <summary>
-        /// プレビューをクリアして通常表示に戻す
-        /// </summary>
-        public void ClearPreview()
-        {
-            RefreshView();
-        }
 
         /// <summary>
         /// ワールド座標をグリッド座標に変換する
