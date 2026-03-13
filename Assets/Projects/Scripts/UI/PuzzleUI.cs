@@ -6,26 +6,32 @@ namespace Projects.Scripts.UI
 {
     public class PuzzleUI : MonoBehaviour
     {
-        [Header("UGUI Buttons")] 
-        [Tooltip("戻るボタン")] 
+        [Header("UGUI Buttons")]
+        [Tooltip("確定ボタン")]
         [SerializeField]
-        private Button backButton;
-        
-        [Header("Puzzle Grid Field")] 
-        [Tooltip("PuzzleGridView")] 
+        private Button confirmButton;
+
+        [Header("Puzzle Components")]
         [SerializeField]
-        private PuzzleGridView puzzleGridView;
+        private GameObject puzzleWindow;
+
+        [SerializeField]
+        private PuzzlePieceGenerator puzzlePieceGenerator;
+
+        [Header("Puzzle Window UI")]
+        [SerializeField]
+        private GameObject puzzleUI;
 
         private void Awake()
         {
-            backButton.onClick.AddListener(OnBackButtonClicked);
+            confirmButton.onClick.AddListener(OnConfirmButtonClicked);
         }
 
-        private void OnBackButtonClicked()
+        private void OnConfirmButtonClicked()
         {
-            var ratio = puzzleGridView.Grid.Clear();
-            
-            Debug.Log(ratio);
+            puzzleWindow.SetActive(false);
+            puzzleUI.SetActive(false);
+            puzzlePieceGenerator.SubmitTray();
         }
     }
 }

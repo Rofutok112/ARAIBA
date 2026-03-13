@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 namespace Projects.Scripts.Puzzle
@@ -150,18 +150,32 @@ namespace Projects.Scripts.Puzzle
         }
 
         /// <summary>
+        /// 現在のグリッドの占有率を返す（0.0～1.0）
+        /// </summary>
+        public float GetOccupancy()
+        {
+            var occupiedCount = 0;
+            for (var x = 0; x < GridSize; x++)
+                for (var y = 0; y < GridSize; y++)
+                {
+                    if (_occupied[x, y]) occupiedCount++;
+                }
+            return occupiedCount / (float)(GridSize * GridSize);
+        }
+
+        /// <summary>
         /// グリッドをすべてクリアし、占有率を返す。
         /// </summary>
         public float Clear()
         {
             var occupiedCount = 0;
             for (var x = 0; x < GridSize; x++)
-            for (var y = 0; y < GridSize; y++)
-            {
-                if (_occupied[x, y]) occupiedCount++;
-                _occupied[x, y] = false;
-            }
-            
+                for (var y = 0; y < GridSize; y++)
+                {
+                    if (_occupied[x, y]) occupiedCount++;
+                    _occupied[x, y] = false;
+                }
+
             OnGridChanged?.Invoke();
             return occupiedCount / (float)(GridSize * GridSize);
         }

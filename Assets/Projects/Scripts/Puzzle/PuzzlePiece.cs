@@ -1,3 +1,4 @@
+using System;
 using Projects.Scripts.Control;
 using UnityEngine;
 
@@ -31,6 +32,7 @@ namespace Projects.Scripts.Puzzle
         private Vector3 _originalScale;
         private Vector2 _spawnPosition;
         private bool _isPlaced;
+        private Action<PuzzlePiece> _onPlacedCallback;
 
         /// <summary>
         /// このピースの形状データ
@@ -41,6 +43,19 @@ namespace Projects.Scripts.Puzzle
         /// グリッド上に配置済みかどうか
         /// </summary>
         public bool IsPlaced => _isPlaced;
+
+        /// <summary>
+        /// PuzzlePieceGeneratorから動的に初期化する
+        /// </summary>
+        /// <param name="pieceShape">ピースの形状データ</param>
+        /// <param name="targetGridView">配置先のグリッドビュー</param>
+        /// <param name="onPlaced">配置完了時のコールバック</param>
+        public void Initialize(PuzzlePieceShape pieceShape, PuzzleGridView targetGridView, Action<PuzzlePiece> onPlaced = null)
+        {
+            shape = pieceShape;
+            gridView = targetGridView;
+            _onPlacedCallback = onPlaced;
+        }
 
         private void Start()
         {
@@ -174,6 +189,9 @@ namespace Projects.Scripts.Puzzle
                 // Colliderを無効化（配置済みのピースはドラッグ不可）
                 var col = GetComponent<Collider2D>();
                 if (col != null) col.enabled = false;
+
+                // 配置完了コールバックを発火
+                _onPlacedCallback?.Invoke(this);
 
                 // ライン消去チェック TODO: 終了の自由化
                 //gridView.Grid.ClearCompletedLines();

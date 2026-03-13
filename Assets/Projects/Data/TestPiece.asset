@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzlePieceShape
   width: 3
   height: 3
-  cells: 
+  cells: 010101010101010101
