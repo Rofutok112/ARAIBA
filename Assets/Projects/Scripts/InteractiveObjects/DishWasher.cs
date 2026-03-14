@@ -16,6 +16,7 @@ namespace Projects.Scripts.InteractiveObjects
         [SerializeField] private WasherAnim washerAnim;
         [SerializeField] private AudioClip washerStartClip;
         [SerializeField] private AudioClip washingNoiseClip;
+        [SerializeField] private AudioClip washingCompleteClip;
 
         private bool _isRunning;
 
@@ -23,6 +24,7 @@ namespace Projects.Scripts.InteractiveObjects
         {
             AudioManager.Register("WashingNoise", washingNoiseClip);
             AudioManager.Register("WashingStart", washerStartClip);
+            AudioManager.Register("WashingComplete", washingCompleteClip);
         }
 
         public void OnInputBegin(Vector2 pos)
@@ -36,7 +38,7 @@ namespace Projects.Scripts.InteractiveObjects
             _isRunning = true;
             washerAnim?.StartVibration();
             AudioManager.PlayOneShot("WashingStart", volume: 0.7f);
-            AudioManager.Play("WashingNoise", volume: 0.5f, loop: true);
+            AudioManager.Play("WashingNoise", volume: 0.2f, loop: true);
 
             var currentTime = WashingTime;
             while (currentTime >= 0)
@@ -47,6 +49,7 @@ namespace Projects.Scripts.InteractiveObjects
 
             washerAnim?.StopVibration();
             AudioManager.Stop("WashingNoise");
+            AudioManager.PlayOneShot("WashingComplete", volume: 0.7f);
             _isRunning = false;
             Debug.Log("洗浄完了！");
         }

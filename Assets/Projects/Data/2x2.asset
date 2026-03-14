@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bdd419cc97739e84981d2af968ef6f0c, type: 3}
-  m_Name: TestPiece
+  m_Name: 2x2
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzlePieceShape
-  width: 3
-  height: 3
-  cells: 010101010101010101
-  dishSprite: {fileID: 21300000, guid: 025fb89e380de664b82f8d0fca2ac7da, type: 3}
+  width: 2
+  height: 2
+  cells: 01010101
+  dishSprite: {fileID: 0}
   dishColor: {r: 1, g: 1, b: 1, a: 1}

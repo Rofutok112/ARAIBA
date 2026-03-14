@@ -81,7 +81,7 @@ namespace Projects.Scripts.Audio
             source.Play();
         }
 
-        public static void Stop()
+        public static void StopAll()
         {
             if (_instance == null)
             {

@@ -256,7 +256,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &163629294
 Transform:
   m_ObjectHideFlags: 0
@@ -391,7 +391,7 @@ Transform:
   m_GameObject: {fileID: 501165245}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -410,7 +410,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzleGridView
   gridSize: 12
-  cellSize: 0.151
+  cellSize: 0.16
   cellSprite: {fileID: 21300000, guid: 3be84466ac08ce84d954fa18ce30d4c5, type: 3}
   cellColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
 --- !u!1 &574923525
@@ -707,7 +707,7 @@ Transform:
   m_GameObject: {fileID: 842229977}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1080,6 +1080,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6ccfee58c2d4971beec8aaf69f486b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.InteractiveObjects.DishWasher
+  washerAnim: {fileID: 0}
+  washerStartClip: {fileID: 0}
+  washingNoiseClip: {fileID: 0}
+  washingCompleteClip: {fileID: 0}
 --- !u!212 &1061879852
 SpriteRenderer:
   serializedVersion: 2
@@ -1534,7 +1538,7 @@ Transform:
   m_GameObject: {fileID: 1237955718}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1841,8 +1845,8 @@ MonoBehaviour:
   gridView: {fileID: 501165247}
   slotCount: 3
   slotSpacing: 0.8
-  slotAreaOffset: {x: 0, y: -1, z: 0}
-  slotDirection: 0
+  slotAreaOffset: {x: 1.21, y: 0, z: 0}
+  slotDirection: 1
   batchGeneration: 1
   allowDuplicateShapes: 1
 --- !u!1 &1824950077
@@ -1876,8 +1880,8 @@ Transform:
   m_Children:
   - {fileID: 1237955719}
   - {fileID: 1919416957}
-  - {fileID: 163629294}
   - {fileID: 842229978}
+  - {fileID: 163629294}
   m_Father: {fileID: 1221217989}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1919416956
@@ -1906,7 +1910,7 @@ Transform:
   m_GameObject: {fileID: 1919416956}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2156,9 +2160,9 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0.294653
+    x: 0.29498863
     y: 0.22672066
-    width: 0.4095563
+    width: 0.4100228
     height: 0.54655874
   near clip plane: 0.3
   far clip plane: 1000
