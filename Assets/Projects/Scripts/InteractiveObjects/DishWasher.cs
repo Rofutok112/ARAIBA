@@ -1,6 +1,7 @@
-﻿using Projects.Scripts.Control;
-using UnityEngine;
 using Cysharp.Threading.Tasks;
+using Projects.Scripts.BackGround;
+using Projects.Scripts.Control;
+using UnityEngine;
 
 namespace Projects.Scripts.InteractiveObjects
 {
@@ -10,8 +11,11 @@ namespace Projects.Scripts.InteractiveObjects
     public class DishWasher : MonoBehaviour, IInputHandler
     {
         private const float WashingTime = 5.0f;
+
+        [SerializeField] private WasherAnim washerAnim;
+
         private bool _isRunning;
-        
+
         public void OnInputBegin(Vector2 pos)
         {
             if (_isRunning) return;
@@ -21,14 +25,16 @@ namespace Projects.Scripts.InteractiveObjects
         private async UniTaskVoid WasherTimer()
         {
             _isRunning = true;
-            var currentTime = WashingTime;
+            washerAnim?.StartVibration();
 
+            var currentTime = WashingTime;
             while (currentTime >= 0)
             {
                 await UniTask.Yield();
                 currentTime -= Time.deltaTime;
             }
 
+            washerAnim?.StopVibration();
             _isRunning = false;
             Debug.Log("洗浄完了！");
         }
