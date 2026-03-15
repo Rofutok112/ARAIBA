@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
 namespace Projects.Scripts.Puzzle
 {
@@ -12,12 +11,21 @@ namespace Projects.Scripts.Puzzle
     }
 
     /// <summary>
-    /// パズルピースを生成し、スロットに保持するシステム。
-    /// 指定されたスロット位置にピースを生成し、
-    /// すべてのピースが配置されたら新しいピースを生成する。
+    /// パズルピースを生成し、各スロットを同一形状のスタックとして保持する。
+    /// ピースは時間経過で1枚ずつ補充され、最大枚数まで積み上がる。
     /// </summary>
     public class PuzzlePieceGenerator : MonoBehaviour
     {
+        private const int MaxSupportedOrderInLayer = 20;
+
+        [Serializable]
+        private sealed class SlotState
+        {
+            public PuzzlePieceShape Shape;
+            public readonly List<PuzzlePiece> Pieces = new();
+            public float NextRefillTime = -1f;
+        }
+
         [Header("Piece Settings")]
         [Tooltip("生成するピースの形状候補リスト")]
         [SerializeField] private PuzzlePieceShape[] shapePool;
@@ -29,9 +37,6 @@ namespace Projects.Scripts.Puzzle
         [SerializeField] private PuzzleGridView gridView;
 
         [Header("Slot Settings")]
-        [Tooltip("ピースのスロット数")]
-        [SerializeField] private int slotCount = 3;
-
         [Tooltip("スロットの配置間隔")]
         [SerializeField] private float slotSpacing = 3f;
 
@@ -41,15 +46,18 @@ namespace Projects.Scripts.Puzzle
         [Tooltip("スロットの並び方向")]
         [SerializeField] private SlotLayoutDirection slotDirection = SlotLayoutDirection.Horizontal;
 
-        [Header("Generation Options")]
-        [Tooltip("trueの場合、全スロットが空になったら一括生成。falseの場合、配置されたスロットを即座に補充")]
-        [SerializeField] private bool batchGeneration = true;
+        [Header("Refill Settings")]
+        [Tooltip("各スロットの初期枚数")]
+        [SerializeField, Range(1, MaxSupportedOrderInLayer)] private int initialPiecesPerSlot = 5;
 
-        [Tooltip("同じ形状の重複を許可するかどうか")]
-        [SerializeField] private bool allowDuplicateShapes = true;
+        [Tooltip("各スロットの最大枚数")]
+        [SerializeField, Range(1, MaxSupportedOrderInLayer)] private int maxPiecesPerSlot = MaxSupportedOrderInLayer;
+
+        [Tooltip("同じスロット内で重ね表示するときの1枚ごとのオフセット")]
+        [SerializeField] private Vector3 stackPieceOffset = new(0.04f, 0.04f, 0f);
 
         /// <summary>
-        /// 現在スロットに保持されているピースの配列
+        /// 現在各スロットで一番上にあるピースの配列
         /// </summary>
         private PuzzlePiece[] _slots;
 
@@ -58,51 +66,32 @@ namespace Projects.Scripts.Puzzle
         /// </summary>
         private Vector3[] _slotPositions;
 
-        /// <summary>
-        /// すべてのピースが配置されたときに発火するイベント
-        /// </summary>
+        private SlotState[] _slotStates;
+        private readonly Dictionary<PuzzlePiece, int> _pieceToSlotIndex = new();
+
         public event Action OnAllPiecesPlaced;
-
-        /// <summary>
-        /// 新しいピースが生成されたときに発火するイベント
-        /// </summary>
         public event Action OnPiecesGenerated;
-
-        /// <summary>
-        /// ピースが1つ配置されるたびに発火するイベント（占有率更新等に使用）
-        /// </summary>
         public event Action<PuzzlePiece> OnPiecePlacedOnGrid;
-
-        /// <summary>
-        /// トレイが確定されたときに発火するイベント（占有率を引数に渡す）
-        /// </summary>
         public event Action<float> OnTraySubmitted;
 
-        /// <summary>
-        /// 現在保持しているピースの読み取り専用リスト
-        /// </summary>
         public IReadOnlyList<PuzzlePiece> Slots => _slots;
 
-        /// <summary>
-        /// 残っている（未配置の）ピースの数
-        /// </summary>
         public int RemainingPieceCount
         {
             get
             {
+                if (_slotStates == null) return 0;
+
                 var count = 0;
-                if (_slots == null) return count;
-                foreach (var slot in _slots)
+                foreach (var state in _slotStates)
                 {
-                    if (slot != null && !slot.IsPlaced) count++;
+                    count += state?.Pieces.Count ?? 0;
                 }
+
                 return count;
             }
         }
 
-        /// <summary>
-        /// 現在のグリッドの占有率（0.0～1.0）
-        /// </summary>
         public float CurrentOccupancy
         {
             get
@@ -114,8 +103,12 @@ namespace Projects.Scripts.Puzzle
 
         private void Start()
         {
-            InitializeSlots();
             GenerateAllPieces();
+        }
+
+        private void Update()
+        {
+            ProcessTimedRefill();
         }
 
         /// <summary>
@@ -123,30 +116,32 @@ namespace Projects.Scripts.Puzzle
         /// </summary>
         private void InitializeSlots()
         {
+            var slotCount = GetAvailableShapes().Count;
             _slots = new PuzzlePiece[slotCount];
             _slotPositions = new Vector3[slotCount];
+            _slotStates = new SlotState[slotCount];
 
-            // スロットを中央揃えで配置
             var totalLength = (slotCount - 1) * slotSpacing;
             var startPos = -totalLength / 2f;
 
             for (var i = 0; i < slotCount; i++)
             {
-                // Horizontal: 左から右へ, Vertical: 上から下へ（インデックス0が上）
                 var offset = slotDirection == SlotLayoutDirection.Horizontal
                     ? new Vector3(startPos + i * slotSpacing, 0f, 0f)
-                    : new Vector3(0f, -startPos - i * slotSpacing, 0f); // Y軸は下がマイナスになるよう反転
+                    : new Vector3(0f, -startPos - i * slotSpacing, 0f);
 
                 _slotPositions[i] = transform.TransformPoint(slotAreaOffset + offset);
+                _slotStates[i] = new SlotState();
             }
         }
 
         /// <summary>
-        /// すべてのスロットにピースを生成する
+        /// すべてのスロットを新しいスタックで初期化する
         /// </summary>
         public void GenerateAllPieces()
         {
-            if (shapePool == null || shapePool.Length == 0)
+            var availableShapes = GetAvailableShapes();
+            if (availableShapes.Count == 0)
             {
                 Debug.LogWarning("[PuzzlePieceGenerator] 形状プールが空です。インスペクターで形状を設定してください。");
                 return;
@@ -158,66 +153,105 @@ namespace Projects.Scripts.Puzzle
                 return;
             }
 
-            var usedShapes = new HashSet<int>();
-
-            for (var i = 0; i < slotCount; i++)
+            if (_slotStates == null || _slotStates.Length != availableShapes.Count)
             {
-                // 既にピースがあり未配置なら再生成しない
-                if (_slots[i] != null && !_slots[i].IsPlaced)
-                    continue;
+                InitializeSlots();
+            }
 
-                // 以前のピースがあれば処理
-                if (_slots[i] != null)
-                {
-                    if (_slots[i].IsPlaced)
-                    {
-                        // 配置済みのピースはグリッド上に残すため、スロットから切り離すだけ
-                        _slots[i] = null;
-                    }
-                    else
-                    {
-                        Destroy(_slots[i].gameObject);
-                        _slots[i] = null;
-                    }
-                }
+            ClearAllPieces();
+            var initialCount = Mathf.Clamp(initialPiecesPerSlot, 1, Mathf.Min(maxPiecesPerSlot, MaxSupportedOrderInLayer));
 
-                var shape = SelectShape(usedShapes);
-                if (shape == null)
+            for (var i = 0; i < availableShapes.Count; i++)
+            {
+                var state = _slotStates[i];
+                state.Shape = availableShapes[i];
+                state.NextRefillTime = -1f;
+
+                if (state.Shape == null)
                 {
                     Debug.LogWarning($"[PuzzlePieceGenerator] スロット{i}に適切な形状が見つかりませんでした。");
                     continue;
                 }
 
-                _slots[i] = SpawnPiece(shape, _slotPositions[i]);
+                RefillSlot(i, initialCount);
             }
 
             OnPiecesGenerated?.Invoke();
         }
 
-        /// <summary>
-        /// 形状プールからランダムに形状を選択する
-        /// </summary>
-        private PuzzlePieceShape SelectShape(HashSet<int> usedIndices)
+        private void ProcessTimedRefill()
         {
-            // 候補リストを構築
-            var candidates = new List<int>();
+            if (_slotStates == null) return;
 
-            for (var i = 0; i < shapePool.Length; i++)
+            var generatedAny = false;
+            for (var i = 0; i < _slotStates.Length; i++)
             {
-                if (shapePool[i] == null) continue;
+                var state = _slotStates[i];
+                if (state == null || state.Shape == null) continue;
 
-                // 重複チェック
-                if (!allowDuplicateShapes && usedIndices.Contains(i)) continue;
+                if (state.Pieces.Count >= maxPiecesPerSlot)
+                {
+                    state.NextRefillTime = -1f;
+                    continue;
+                }
 
-                candidates.Add(i);
+                if (state.NextRefillTime < 0f)
+                {
+                    state.NextRefillTime = Time.time + GetRefillInterval(state.Shape);
+                }
+
+                while (state.Pieces.Count < maxPiecesPerSlot && Time.time >= state.NextRefillTime)
+                {
+                    RefillSlot(i, 1);
+                    state.NextRefillTime += GetRefillInterval(state.Shape);
+                    generatedAny = true;
+                }
+
+                if (state.Pieces.Count >= maxPiecesPerSlot)
+                {
+                    state.NextRefillTime = -1f;
+                }
             }
 
-            if (candidates.Count == 0) return null;
+            if (generatedAny)
+            {
+                OnPiecesGenerated?.Invoke();
+            }
+        }
 
-            // ランダム選択
-            var selectedIndex = candidates[Random.Range(0, candidates.Count)];
-            usedIndices.Add(selectedIndex);
-            return shapePool[selectedIndex];
+        private List<PuzzlePieceShape> GetAvailableShapes()
+        {
+            var uniqueShapes = new List<PuzzlePieceShape>();
+            if (shapePool == null) return uniqueShapes;
+
+            foreach (var shape in shapePool)
+            {
+                if (shape == null || uniqueShapes.Contains(shape)) continue;
+                uniqueShapes.Add(shape);
+            }
+
+            return uniqueShapes;
+        }
+
+        private static float GetRefillInterval(PuzzlePieceShape shape)
+        {
+            return shape != null ? shape.RefillIntervalSeconds : 0.1f;
+        }
+
+        private void RefillSlot(int slotIndex, int amount)
+        {
+            var state = _slotStates[slotIndex];
+            if (state?.Shape == null) return;
+
+            var spawnCount = Mathf.Min(amount, maxPiecesPerSlot - state.Pieces.Count);
+            for (var i = 0; i < spawnCount; i++)
+            {
+                var piece = SpawnPiece(state.Shape, _slotPositions[slotIndex]);
+                state.Pieces.Add(piece);
+                _pieceToSlotIndex[piece] = slotIndex;
+            }
+
+            RefreshSlotVisuals(slotIndex);
         }
 
         /// <summary>
@@ -231,65 +265,68 @@ namespace Projects.Scripts.Puzzle
         }
 
         /// <summary>
+        /// スロット内のピース位置と操作可否を更新する
+        /// </summary>
+        private void RefreshSlotVisuals(int slotIndex)
+        {
+            var state = _slotStates[slotIndex];
+            if (state == null) return;
+
+            for (var i = 0; i < state.Pieces.Count; i++)
+            {
+                var piece = state.Pieces[i];
+                if (piece == null) continue;
+
+                var position = _slotPositions[slotIndex] + stackPieceOffset * i;
+                var isTopPiece = i == state.Pieces.Count - 1;
+                piece.ConfigureStackPresentation(position, i, isTopPiece);
+            }
+
+            _slots[slotIndex] = state.Pieces.Count > 0 ? state.Pieces[^1] : null;
+        }
+
+        /// <summary>
         /// ピースが配置されたときのコールバック
         /// </summary>
         private void HandlePiecePlaced(PuzzlePiece piece)
         {
-            // ピース配置通知を発火
             OnPiecePlacedOnGrid?.Invoke(piece);
 
-            if (batchGeneration)
+            if (!_pieceToSlotIndex.TryGetValue(piece, out var slotIndex))
             {
-                // 一括生成モード: すべてのスロットが空（配置済み）かチェック
-                if (RemainingPieceCount == 0)
-                {
-                    OnAllPiecesPlaced?.Invoke();
-                    GenerateAllPieces();
-                }
+                return;
             }
-            else
-            {
-                // 即時補充モード: 配置されたスロットを見つけて補充
-                for (var i = 0; i < _slots.Length; i++)
-                {
-                    if (_slots[i] == piece)
-                    {
-                        // 配置済みのピースはグリッド上に残すため、スロットから切り離すだけ
-                        _slots[i] = null;
-                        var usedShapes = new HashSet<int>();
-                        var shape = SelectShape(usedShapes);
-                        if (shape != null)
-                        {
-                            _slots[i] = SpawnPiece(shape, _slotPositions[i]);
-                        }
-                        break;
-                    }
-                }
 
-                OnPiecesGenerated?.Invoke();
+            var state = _slotStates[slotIndex];
+            _pieceToSlotIndex.Remove(piece);
+            state.Pieces.Remove(piece);
+
+            if (state.Pieces.Count < maxPiecesPerSlot && state.NextRefillTime < 0f)
+            {
+                state.NextRefillTime = Time.time + GetRefillInterval(state.Shape);
+            }
+
+            RefreshSlotVisuals(slotIndex);
+
+            if (RemainingPieceCount == 0)
+            {
+                OnAllPiecesPlaced?.Invoke();
             }
         }
 
         /// <summary>
         /// ユーザーがトレイを確定する。
         /// グリッドをクリアし、占有率を返してイベントを発火する。
-        /// 残っているピースも破棄して新しいピースを生成する。
+        /// 残っているピースも破棄して新しいスタックを生成する。
         /// </summary>
-        /// <returns>確定時のグリッド占有率（0.0～1.0）</returns>
         public float SubmitTray()
         {
             if (gridView == null || gridView.Grid == null) return 0f;
 
-            // グリッドをクリアして占有率を取得
             var occupancy = gridView.Grid.Clear();
-
-            // 配置済みのピースGameObjectを削除（グリッド上のビジュアル）
             CleanupPlacedPieces();
-
-            // イベント発火
             OnTraySubmitted?.Invoke(occupancy);
 
-            // 残りのピースも破棄して新しいセットを生成
             ClearAllPieces();
             GenerateAllPieces();
 
@@ -298,45 +335,48 @@ namespace Projects.Scripts.Puzzle
 
         /// <summary>
         /// グリッド上に配置済みのピースGameObjectを削除する
-        /// （スロットから切り離された配置済みピースも含む）
         /// </summary>
         private void CleanupPlacedPieces()
         {
-            // 子オブジェクトのPuzzlePieceを全検索し、配置済みのものを削除
             var pieces = GetComponentsInChildren<PuzzlePiece>();
             foreach (var piece in pieces)
             {
-                if (piece.IsPlaced)
+                if (piece != null && piece.IsPlaced)
                 {
                     Destroy(piece.gameObject);
-                }
-            }
-
-            // スロット内の配置済みピース参照もクリア
-            if (_slots == null) return;
-            for (var i = 0; i < _slots.Length; i++)
-            {
-                if (_slots[i] != null && _slots[i].IsPlaced)
-                {
-                    _slots[i] = null;
                 }
             }
         }
 
         /// <summary>
-        /// すべてのスロットのピースを破棄してリセットする
+        /// すべてのスロットの未配置ピースを破棄してリセットする
         /// </summary>
         public void ClearAllPieces()
         {
-            if (_slots == null) return;
+            if (_slotStates == null) return;
 
+            foreach (var state in _slotStates)
+            {
+                if (state == null) continue;
+
+                foreach (var piece in state.Pieces)
+                {
+                    if (piece != null)
+                    {
+                        Destroy(piece.gameObject);
+                    }
+                }
+
+                state.Pieces.Clear();
+                state.NextRefillTime = -1f;
+            }
+
+            _pieceToSlotIndex.Clear();
+
+            if (_slots == null) return;
             for (var i = 0; i < _slots.Length; i++)
             {
-                if (_slots[i] != null)
-                {
-                    Destroy(_slots[i].gameObject);
-                    _slots[i] = null;
-                }
+                _slots[i] = null;
             }
         }
 
@@ -350,11 +390,18 @@ namespace Projects.Scripts.Puzzle
         }
 
 #if UNITY_EDITOR
+        private void OnValidate()
+        {
+            maxPiecesPerSlot = Mathf.Clamp(maxPiecesPerSlot, 1, MaxSupportedOrderInLayer);
+            initialPiecesPerSlot = Mathf.Clamp(initialPiecesPerSlot, 1, maxPiecesPerSlot);
+        }
+
         /// <summary>
         /// エディター上でスロット位置をギズモ表示する
         /// </summary>
         private void OnDrawGizmosSelected()
         {
+            var slotCount = GetAvailableShapes().Count;
             if (slotCount <= 0) return;
 
             var totalLength = (slotCount - 1) * slotSpacing;
@@ -370,6 +417,9 @@ namespace Projects.Scripts.Puzzle
 
                 var pos = transform.TransformPoint(slotAreaOffset + offset);
                 Gizmos.DrawSphere(pos, 0.1f);
+
+                var topPos = pos + stackPieceOffset * Mathf.Max(initialPiecesPerSlot - 1, 0);
+                Gizmos.DrawLine(pos, topPos);
             }
         }
 #endif

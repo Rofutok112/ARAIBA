@@ -82,3 +82,6 @@ crashlytics-build.properties
 
 # Jetbrains IDE
 .idea/
+
+# Codex Skills
+.agents/

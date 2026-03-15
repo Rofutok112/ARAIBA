@@ -42,6 +42,7 @@ namespace Projects.Scripts.Editor
         private SerializedProperty _cellsProp;
         private SerializedProperty _dishSpriteProp;
         private SerializedProperty _dishColorProp;
+        private SerializedProperty _refillIntervalSecondsProp;
         private Texture2D _whiteTexture;
         private bool _showPresets = false;
         private Vector2 _presetsScroll;
@@ -53,6 +54,7 @@ namespace Projects.Scripts.Editor
             _cellsProp = serializedObject.FindProperty("cells");
             _dishSpriteProp = serializedObject.FindProperty("dishSprite");
             _dishColorProp = serializedObject.FindProperty("dishColor");
+            _refillIntervalSecondsProp = serializedObject.FindProperty("refillIntervalSeconds");
             _whiteTexture = Texture2D.whiteTexture;
         }
 
@@ -87,6 +89,8 @@ namespace Projects.Scripts.Editor
 
             // ─── 食器ビジュアル ───
             DrawDishVisual();
+            EditorGUILayout.Space(HeaderSpacing);
+            DrawRefillSettings();
 
             EditorGUILayout.Space(HeaderSpacing);
 
@@ -360,6 +364,19 @@ namespace Projects.Scripts.Editor
             }
 
             EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawRefillSettings()
+        {
+            EditorGUILayout.LabelField("Refill Settings",
+                new GUIStyle(EditorStyles.miniLabel)
+                {
+                    normal = { textColor = new Color(0.6f, 0.6f, 0.6f) }
+                });
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.PropertyField(_refillIntervalSecondsProp, new GUIContent("Refill Seconds"));
             EditorGUILayout.EndVertical();
         }
 

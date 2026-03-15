@@ -33,9 +33,14 @@ namespace Projects.Scripts.Puzzle
         private Vector3 _originalScale;
         private Vector2 _spawnPosition;
         private bool _isPlaced;
+        private bool _returnToSpawnOnFailedPlacement = true;
+        private bool _isInitialized;
         private Action<PuzzlePiece> _onPlacedCallback;
+        private Action<PuzzlePiece> _onFailedPlacementCallback;
         private readonly List<SpriteRenderer> _spriteRenderers = new();
+        private SpriteRenderer _dishRenderer;
         private GameObject _ghostObject;
+        private int _orderInLayer;
 
         /// <summary>
         /// このピースの形状データ
@@ -48,20 +53,41 @@ namespace Projects.Scripts.Puzzle
         public bool IsPlaced => _isPlaced;
 
         /// <summary>
+        /// スタック内での表示順
+        /// </summary>
+        public int OrderInLayer => _orderInLayer;
+
+        /// <summary>
         /// PuzzlePieceGeneratorから動的に初期化する
         /// </summary>
         /// <param name="pieceShape">ピースの形状データ</param>
         /// <param name="targetGridView">配置先のグリッドビュー</param>
         /// <param name="onPlaced">配置完了時のコールバック</param>
-        public void Initialize(PuzzlePieceShape pieceShape, PuzzleGridView targetGridView, Action<PuzzlePiece> onPlaced = null)
+        public void Initialize(
+            PuzzlePieceShape pieceShape,
+            PuzzleGridView targetGridView,
+            Action<PuzzlePiece> onPlaced = null,
+            bool returnToSpawnOnFailedPlacement = true,
+            Action<PuzzlePiece> onFailedPlacement = null)
         {
             shape = pieceShape;
             gridView = targetGridView;
             _onPlacedCallback = onPlaced;
+            _returnToSpawnOnFailedPlacement = returnToSpawnOnFailedPlacement;
+            _onFailedPlacementCallback = onFailedPlacement;
+            InitializeVisualState();
         }
 
         private void Start()
         {
+            InitializeVisualState();
+        }
+
+        private void InitializeVisualState()
+        {
+            if (_isInitialized) return;
+
+            _isInitialized = true;
             _spawnPosition = transform.position;
             _originalScale = transform.localScale;
             CreatePieceVisuals();
@@ -109,7 +135,8 @@ namespace Projects.Scripts.Puzzle
             var sr = dishObj.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
             sr.color = shape.DishColor;
-            sr.sortingOrder = 10;
+            sr.sortingOrder = 10 + _orderInLayer;
+            _dishRenderer = sr;
             _spriteRenderers.Add(sr);
 
             // スプライトのピクセルサイズから自動スケーリング
@@ -168,6 +195,33 @@ namespace Projects.Scripts.Puzzle
             boxCollider.size = new Vector2(maxX - minX, maxY - minY);
         }
 
+        public void ConfigureStackPresentation(Vector3 worldPosition, int orderInLayer, bool isInteractable)
+        {
+            if (_isPlaced) return;
+
+            _orderInLayer = Mathf.Clamp(orderInLayer, 0, 19);
+            transform.position = worldPosition;
+            _spawnPosition = worldPosition;
+
+            if (_dishRenderer != null)
+            {
+                _dishRenderer.sortingOrder = 10 + _orderInLayer;
+            }
+
+            SetInteractable(isInteractable);
+        }
+
+        public void SetInteractable(bool isInteractable)
+        {
+            if (_isPlaced) return;
+
+            var col = GetComponent<Collider2D>();
+            if (col != null)
+            {
+                col.enabled = isInteractable;
+            }
+        }
+
         public void OnInputBegin(Vector2 pos)
         {
             if (_isPlaced) return;
@@ -218,8 +272,14 @@ namespace Projects.Scripts.Puzzle
             }
             else
             {
-                // 配置失敗: 元の位置に戻す
-                transform.position = _spawnPosition;
+                if (_returnToSpawnOnFailedPlacement)
+                {
+                    transform.position = _spawnPosition;
+                }
+                else
+                {
+                    _onFailedPlacementCallback?.Invoke(this);
+                }
             }
         }
 
