@@ -15,5 +15,6 @@ MonoBehaviour:
   width: 1
   height: 5
   cells: 0101010101
-  dishSprite: {fileID: 21300000, guid: aea676179fe54dc4eb11c71267ec2461, type: 3}
-  dishColor: {r: 1, g: 1, b: 1, a: 1}
+  dishSprites:
+  - {fileID: 21300000, guid: aea676179fe54dc4eb11c71267ec2461, type: 3}
+  refillIntervalSeconds: 4

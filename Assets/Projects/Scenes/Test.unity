@@ -606,6 +606,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 911669527}
+  - {fileID: 873125916}
   - {fileID: 1014808098}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -691,7 +692,7 @@ GameObject:
   m_Component:
   - component: {fileID: 842229978}
   - component: {fileID: 842229979}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: FrameBase
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -772,6 +773,53 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &873125915
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 873125916}
+  - component: {fileID: 873125917}
+  m_Layer: 0
+  m_Name: PuzzleSEInitializer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &873125916
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 873125915}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.59512, y: 0, z: 0.21912}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 604434507}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &873125917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 873125915}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83ef5ca002614874bfcd5b4a5a8a3f46, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzleSEInitializer
+  piecePlacedClip: {fileID: 8300000, guid: c2e6fb3d6c756d244b88d6a34ef3ce30, type: 3}
+  pieceClickClip: {fileID: 8300000, guid: 4f3735d6a13e1b14698c202e019d24a7, type: 3}
+  pieceCancelClip: {fileID: 8300000, guid: 94dbef90b79f51f488157636c4c8cf53, type: 3}
 --- !u!1 &911669526
 GameObject:
   m_ObjectHideFlags: 0
@@ -1842,16 +1890,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 295c0fa220f669a439552db190d59721, type: 2}
   - {fileID: 11400000, guid: dcfe1d2ea57ea014db527cb30efd7c16, type: 2}
   - {fileID: 11400000, guid: 809f75c8ad873b647848eeda5cd7741a, type: 2}
+  - {fileID: 11400000, guid: 3b51fb0ff1ca42c4c8ec5e53c41496a9, type: 2}
+  - {fileID: 11400000, guid: c3d8ad3a214b54f4f919b20453d33985, type: 2}
   piecePrefab: {fileID: 967775569976299608, guid: 9f4643ff631376a42b87857434f7f4bc, type: 3}
   gridView: {fileID: 501165247}
-  slotCount: 4
   slotSpacing: 0.5
-  slotAreaOffset: {x: 1.35, y: 0, z: 0}
+  slotsPerLine: 4
+  lineSpacing: 0.5
+  slotAreaOffset: {x: 1.02, y: 0, z: 0}
   slotDirection: 1
-  allowDuplicateShapes: 1
-  refillIntervalSeconds: 3
   initialPiecesPerSlot: 1
-  maxPiecesPerSlot: 20
+  maxPiecesPerSlot: 4
   stackPieceOffset: {x: 0, y: 0.05, z: 0}
 --- !u!1 &1824950077
 GameObject:
@@ -1967,7 +2016,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 11
+  m_SortingOrder: 20
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: c5f274cddd5f5ef49b2443efe09f7b25, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}

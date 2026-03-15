@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Projects.Scripts.Audio;
 using UnityEngine;
 
 namespace Projects.Scripts.Puzzle
@@ -285,8 +286,36 @@ namespace Projects.Scripts.Puzzle
         private PuzzlePiece SpawnPiece(PuzzlePieceShape shape, Vector3 position)
         {
             var piece = Instantiate(piecePrefab, position, Quaternion.identity, transform);
-            piece.Initialize(shape, gridView, HandlePiecePlaced);
+            piece.Initialize(shape, gridView, ChooseRandomSprite(shape), HandlePiecePlaced);
             return piece;
+        }
+
+        private static Sprite ChooseRandomSprite(PuzzlePieceShape shape)
+        {
+            if (shape == null) return null;
+
+            var assignedSpriteCount = shape.GetAssignedDishSpriteCount();
+            if (assignedSpriteCount <= 0)
+            {
+                return null;
+            }
+
+            var targetIndex = UnityEngine.Random.Range(0, assignedSpriteCount);
+            var currentIndex = 0;
+            for (var i = 0; i < shape.DishSprites.Count; i++)
+            {
+                var sprite = shape.GetSpriteAt(i);
+                if (sprite == null) continue;
+
+                if (currentIndex == targetIndex)
+                {
+                    return sprite;
+                }
+
+                currentIndex++;
+            }
+
+            return null;
         }
 
         /// <summary>

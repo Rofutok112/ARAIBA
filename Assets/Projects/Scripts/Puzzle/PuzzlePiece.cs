@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Projects.Scripts.Audio;
 using Projects.Scripts.Control;
 using UnityEngine;
 
@@ -44,6 +45,7 @@ namespace Projects.Scripts.Puzzle
         private SpriteRenderer _dishRenderer;
         private GameObject _ghostObject;
         private int _orderInLayer;
+        private Sprite _selectedDishSprite;
 
         /// <summary>
         /// このピースの形状データ
@@ -63,18 +65,17 @@ namespace Projects.Scripts.Puzzle
         /// <summary>
         /// PuzzlePieceGeneratorから動的に初期化する
         /// </summary>
-        /// <param name="pieceShape">ピースの形状データ</param>
-        /// <param name="targetGridView">配置先のグリッドビュー</param>
-        /// <param name="onPlaced">配置完了時のコールバック</param>
         public void Initialize(
             PuzzlePieceShape pieceShape,
             PuzzleGridView targetGridView,
+            Sprite selectedDishSprite = null,
             Action<PuzzlePiece> onPlaced = null,
             bool returnToSpawnOnFailedPlacement = true,
             Action<PuzzlePiece> onFailedPlacement = null)
         {
             shape = pieceShape;
             gridView = targetGridView;
+            _selectedDishSprite = selectedDishSprite;
             _onPlacedCallback = onPlaced;
             _returnToSpawnOnFailedPlacement = returnToSpawnOnFailedPlacement;
             _onFailedPlacementCallback = onFailedPlacement;
@@ -121,7 +122,7 @@ namespace Projects.Scripts.Puzzle
         /// </summary>
         private void CreateDishOverlay(float cellSize, Vector2 center)
         {
-            var sprite = shape.GetEffectiveSprite();
+            var sprite = GetSelectedSprite();
             if (sprite == null) return;
 
             var dishObj = new GameObject("DishOverlay");
@@ -137,7 +138,7 @@ namespace Projects.Scripts.Puzzle
 
             var sr = dishObj.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            sr.color = shape.DishColor;
+            sr.color = Color.white;
             sr.sortingOrder = 10 + _orderInLayer;
             _dishRenderer = sr;
             _spriteRenderers.Add(sr);
@@ -229,7 +230,9 @@ namespace Projects.Scripts.Puzzle
         public void OnInputBegin(Vector2 pos)
         {
             if (_isPlaced) return;
-
+            
+            AudioManager.PlayOneShot("PieceClick");
+            
             _dragOffset = (Vector2)transform.position - pos;
             ApplyFullScale(dragScale);
             SetAlpha(dragAlpha);
@@ -238,7 +241,7 @@ namespace Projects.Scripts.Puzzle
         public void OnInputDrag(Vector2 pos)
         {
             if (_isPlaced) return;
-
+            
             transform.position = pos + _dragOffset;
 
             // グリッド上にゴーストプレビューを表示
@@ -264,6 +267,7 @@ namespace Projects.Scripts.Puzzle
             if (gridView.Grid.TryPlace(shape, gridPos))
             {
                 // 配置成功: ピースをグリッドのセル位置にスナップ
+                AudioManager.PlayOneShot("PiecePlace");
                 SnapToGrid(gridPos);
                 _isPlaced = true;
 
@@ -279,6 +283,7 @@ namespace Projects.Scripts.Puzzle
                 if (_returnToSpawnOnFailedPlacement)
                 {
                     transform.position = _spawnPosition;
+                    AudioManager.PlayOneShot("PieceCancel");
                     ApplyStockScale();
                 }
                 else
@@ -348,7 +353,7 @@ namespace Projects.Scripts.Puzzle
             var center = CalculatePieceCenter(filledCells, cellSize);
 
             // 食器スプライトのゴーストを生成
-            var sprite = shape.GetEffectiveSprite();
+            var sprite = GetSelectedSprite();
             if (sprite != null)
             {
                 var dishObj = new GameObject("GhostDishOverlay");
@@ -363,7 +368,7 @@ namespace Projects.Scripts.Puzzle
 
                 var sr = dishObj.AddComponent<SpriteRenderer>();
                 sr.sprite = sprite;
-                sr.color = new Color(shape.DishColor.r, shape.DishColor.g, shape.DishColor.b, previewAlpha);
+                sr.color = new Color(1f, 1f, 1f, previewAlpha);
                 sr.sortingOrder = 5;
 
                 var spriteSize = sprite.bounds.size;
@@ -373,6 +378,11 @@ namespace Projects.Scripts.Puzzle
                 var scaleY = targetHeight / spriteSize.y;
                 dishObj.transform.localScale = new Vector3(scaleX, scaleY, 1f);
             }
+        }
+
+        private Sprite GetSelectedSprite()
+        {
+            return _selectedDishSprite != null ? _selectedDishSprite : shape.GetEffectiveSprite();
         }
 
         /// <summary>
