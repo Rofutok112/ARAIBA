@@ -1,6 +1,10 @@
+using System;
 using Projects.Scripts.InteractiveObjects;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 namespace Projects.Scripts.UI
 {
@@ -16,6 +20,10 @@ namespace Projects.Scripts.UI
 
         [Header("Puzzle Window UI")]
         [SerializeField] private GameObject puzzleUI;
+        [SerializeField] private Vector3 closeRiseOffset = new(0f, 0.15f, 0f);
+        [SerializeField] private Vector3 closeFallOffset = new(0f, -0.5f, 0f);
+        [SerializeField] private float closeRiseDuration = 0.12f;
+        [SerializeField] private float closeFallDuration = 0.25f;
 
         [Header("Washer Timer UI")]
         [SerializeField] private Image washerTimerFillImage;
@@ -24,9 +32,17 @@ namespace Projects.Scripts.UI
         [SerializeField] private Color warningTimerColor = new(1f, 0.25f, 0.25f, 1f);
         [SerializeField, Min(0.05f)] private float warningColorPulseDuration = 0.35f;
 
+        private Vector3 puzzleWindowDefaultPosition;
+        private Tween puzzleWindowTween;
+        private CancellationTokenSource closeAnimationCts;
+
         private void Awake()
         {
             confirmButton.onClick.AddListener(OnConfirmButtonClicked);
+            if (puzzleWindow != null)
+            {
+                puzzleWindowDefaultPosition = puzzleWindow.transform.position;
+            }
 
             UpdateWasherTimerVisual(0f);
         }
@@ -43,6 +59,11 @@ namespace Projects.Scripts.UI
 
         private void OnDisable()
         {
+            puzzleWindowTween?.Kill();
+            closeAnimationCts?.Cancel();
+            closeAnimationCts?.Dispose();
+            closeAnimationCts = null;
+
             if (dishWasher != null)
             {
                 dishWasher.OnWashProgressChanged -= HandleWashProgressChanged;
@@ -52,8 +73,52 @@ namespace Projects.Scripts.UI
 
         private void OnConfirmButtonClicked()
         {
-            puzzleWindow.SetActive(false);
-            //puzzleUI.SetActive(false);
+            if (puzzleWindow == null)
+            {
+                puzzleUI.SetActive(false);
+                return;
+            }
+
+            closeAnimationCts?.Cancel();
+            closeAnimationCts?.Dispose();
+            closeAnimationCts = new CancellationTokenSource();
+            ClosePuzzleWindowAsync(closeAnimationCts.Token).Forget();
+        }
+
+        private async UniTaskVoid ClosePuzzleWindowAsync(CancellationToken cancellationToken)
+        {
+            puzzleWindowTween?.Kill();
+
+            var currentPosition = puzzleWindow.transform.position;
+            var riseTarget = currentPosition + closeRiseOffset;
+            var fallTarget = puzzleWindowDefaultPosition + closeFallOffset;
+
+            try
+            {
+                puzzleWindowTween = puzzleWindow.transform.DOMove(riseTarget, closeRiseDuration).SetEase(Ease.OutQuad);
+                await puzzleWindowTween.AsyncWaitForCompletion().AsUniTask().AttachExternalCancellation(cancellationToken);
+
+                puzzleWindowTween = puzzleWindow.transform.DOMove(fallTarget, closeFallDuration).SetEase(Ease.InBack);
+                await puzzleWindowTween.AsyncWaitForCompletion().AsUniTask().AttachExternalCancellation(cancellationToken);
+
+                puzzleWindow.transform.position = puzzleWindowDefaultPosition;
+                puzzleWindow.SetActive(false);
+                puzzleUI.SetActive(false);
+            }
+            catch (OperationCanceledException)
+            {
+                puzzleWindowTween?.Kill();
+            }
+            finally
+            {
+                puzzleWindowTween = null;
+
+                if (closeAnimationCts != null && closeAnimationCts.Token == cancellationToken)
+                {
+                    closeAnimationCts.Dispose();
+                    closeAnimationCts = null;
+                }
+            }
         }
 
         private void HandleWashProgressChanged(float normalizedRemainingTime)
