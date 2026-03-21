@@ -42,6 +42,7 @@ namespace Projects.Scripts.Puzzle
         private GameObject _ghostObject;
         private int _orderInLayer;
         private Sprite _selectedDishSprite;
+        private Vector2Int _placedGridOrigin;
 
         /// <summary>
         /// このピースの形状データ
@@ -57,6 +58,13 @@ namespace Projects.Scripts.Puzzle
         /// スタック内での表示順
         /// </summary>
         public int OrderInLayer => _orderInLayer;
+        public string DishTypeKey => _selectedDishSprite != null
+            ? _selectedDishSprite.name
+            : _shape != null
+                ? _shape.name
+                : "Unknown";
+        public Sprite SelectedDishSprite => _selectedDishSprite != null ? _selectedDishSprite : _shape?.GetEffectiveSprite();
+        public Vector2Int PlacedGridOrigin => _placedGridOrigin;
 
         /// <summary>
         /// PuzzlePieceGeneratorから動的に初期化する
@@ -266,6 +274,7 @@ namespace Projects.Scripts.Puzzle
                 AudioManager.PlayOneShot("PiecePlace");
                 SnapToGrid(gridPos);
                 _isPlaced = true;
+                _placedGridOrigin = gridPos;
 
                 // Colliderを無効化（配置済みのピースはドラッグ不可）
                 var col = GetComponent<Collider2D>();

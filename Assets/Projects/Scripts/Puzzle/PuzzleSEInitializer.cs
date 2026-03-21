@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Projects.Scripts.Puzzle
 {
-    public class PuzzleSEInitializer : MonoBehaviour
+    public class PuzzleSeInitializer : MonoBehaviour
     {
         [Header("SoundClip Settings")]
         [Tooltip("ピースがグリッドに配置されたときのサウンドクリップ")]

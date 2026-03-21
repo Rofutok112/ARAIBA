@@ -8,19 +8,16 @@ namespace Projects.Scripts.Puzzle
     /// </summary>
     public class PuzzleGridView : MonoBehaviour
     {
-        [Header("Grid Settings")]
-        [Tooltip("グリッドの一辺のセル数")]
-        [SerializeField] private int gridSize = 8;
+        [Header("Grid Settings")] [Tooltip("グリッドの一辺のセル数")] [SerializeField]
+        private int gridSize = 8;
 
-        [Tooltip("1セルのワールド空間サイズ")]
-        [SerializeField] private float cellSize = 1f;
+        [Tooltip("1セルのワールド空間サイズ")] [SerializeField]
+        private float cellSize = 1f;
 
-        [Header("Cell Visuals")]
-        [Tooltip("セルに使用するスプライト（正方形推奨）")]
-        [SerializeField] private Sprite cellSprite;
+        [Header("Cell Visuals")] [Tooltip("セルに使用するスプライト（正方形推奨）")] [SerializeField]
+        private Sprite cellSprite;
 
-        [Tooltip("セルの色")]
-        [SerializeField] private Color cellColor = new(0.9f, 0.9f, 0.9f, 1f);
+        [Tooltip("セルの色")] [SerializeField] private Color cellColor = new(0.9f, 0.9f, 0.9f, 1f);
 
         private SpriteRenderer[,] _cellRenderers;
 
@@ -33,6 +30,10 @@ namespace Projects.Scripts.Puzzle
         /// 1セルのワールド空間サイズ
         /// </summary>
         public float CellSize => cellSize;
+
+        public int GridSize => gridSize;
+        public Sprite CellSprite => cellSprite;
+        public Color CellColor => cellColor;
 
         /// <summary>
         /// グリッド全体のワールド空間サイズ
@@ -101,7 +102,6 @@ namespace Projects.Scripts.Puzzle
             }
         }
 
-
         /// <summary>
         /// ワールド座標をグリッド座標に変換する
         /// </summary>
@@ -137,6 +137,16 @@ namespace Projects.Scripts.Puzzle
             );
 
             return transform.TransformPoint(localPos);
+        }
+
+        public void PlayOpeningAnimation()
+        {
+            
+        }
+
+        public void PlayClosingAnimation()
+        {
+            
         }
     }
 }
