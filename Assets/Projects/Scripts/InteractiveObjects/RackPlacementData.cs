@@ -21,16 +21,24 @@ namespace Projects.Scripts.InteractiveObjects
     public class PlacedDishInfo
     {
         public readonly string DishTypeKey;
+        public readonly string ShapeKey;
+        public readonly string DishTypeName;
         public readonly Sprite Sprite;
         public readonly Vector2Int GridOrigin;
         public readonly Vector2Int[] ShapeCells;
+        public readonly int ShapeWidth;
+        public readonly int ShapeHeight;
 
-        public PlacedDishInfo(string dishTypeKey, Sprite sprite, Vector2Int gridOrigin, Vector2Int[] shapeCells)
+        public PlacedDishInfo(string dishTypeKey, string shapeKey, string dishTypeName, Sprite sprite, Vector2Int gridOrigin, Vector2Int[] shapeCells, int shapeWidth, int shapeHeight)
         {
             DishTypeKey = dishTypeKey;
+            ShapeKey = shapeKey;
+            DishTypeName = dishTypeName;
             Sprite = sprite;
             GridOrigin = gridOrigin;
             ShapeCells = shapeCells;
+            ShapeWidth = shapeWidth;
+            ShapeHeight = shapeHeight;
         }
     }
 }

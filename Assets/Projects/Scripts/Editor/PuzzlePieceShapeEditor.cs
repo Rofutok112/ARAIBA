@@ -28,6 +28,7 @@ namespace Projects.Scripts.Editor
         private SerializedProperty _widthProp;
         private SerializedProperty _heightProp;
         private SerializedProperty _cellsProp;
+        private SerializedProperty _dishTypeNameProp;
         private SerializedProperty _dishSpritesProp;
         private SerializedProperty _refillIntervalSecondsProp;
         private bool _showPresets;
@@ -38,6 +39,7 @@ namespace Projects.Scripts.Editor
             _widthProp = serializedObject.FindProperty("width");
             _heightProp = serializedObject.FindProperty("height");
             _cellsProp = serializedObject.FindProperty("cells");
+            _dishTypeNameProp = serializedObject.FindProperty("dishTypeName");
             _dishSpritesProp = serializedObject.FindProperty("dishSprites");
             _refillIntervalSecondsProp = serializedObject.FindProperty("refillIntervalSeconds");
         }
@@ -47,6 +49,9 @@ namespace Projects.Scripts.Editor
             serializedObject.Update();
 
             DrawTitle();
+            EditorGUILayout.Space(HeaderSpacing);
+
+            EditorGUILayout.PropertyField(_dishTypeNameProp, new GUIContent("Dish Type Name"));
             EditorGUILayout.Space(HeaderSpacing);
 
             DrawSizeControls();

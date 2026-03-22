@@ -28,8 +28,8 @@ namespace Projects.Scripts.Puzzle
         }
 
         [Header("Piece Settings")]
-        [Tooltip("生成するピースの形状候補リスト")]
-        [SerializeField] private PuzzlePieceShape[] shapePool;
+        [Tooltip("形状プール（ScriptableObject）")]
+        [SerializeField] private ShapePool shapePool;
 
         [Tooltip("ピースのプレハブ（PuzzlePieceコンポーネント付き）")]
         [SerializeField] private PuzzlePiece piecePrefab;
@@ -222,9 +222,9 @@ namespace Projects.Scripts.Puzzle
         private List<PuzzlePieceShape> GetAvailableShapes()
         {
             var uniqueShapes = new List<PuzzlePieceShape>();
-            if (shapePool == null) return uniqueShapes;
+            if (shapePool == null || shapePool.Shapes == null) return uniqueShapes;
 
-            foreach (var shape in shapePool)
+            foreach (var shape in shapePool.Shapes)
             {
                 if (shape == null || uniqueShapes.Contains(shape)) continue;
                 uniqueShapes.Add(shape);

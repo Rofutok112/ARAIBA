@@ -1,38 +1,46 @@
+using TMPro;
 using UnityEngine;
 
 namespace Projects.Scripts.Sorting
 {
     /// <summary>
-    /// 選別画面のドロップ先。皿の種類ごとに1つ配置される。
+    /// 選別画面のドロップ先。Shape（形状）ごとに1つ配置される。
     /// </summary>
     public class SortingTarget : MonoBehaviour
     {
-        private string _dishTypeKey;
-        private SpriteRenderer _spriteRenderer;
+        [SerializeField] private SpriteRenderer spriteRenderer;
+        [SerializeField] private TextMeshPro label;
 
-        public string DishTypeKey => _dishTypeKey;
+        private string _shapeKey;
 
-        public void Initialize(string dishTypeKey, Sprite sprite, float alpha)
+        public string ShapeKey => _shapeKey;
+
+        public void Initialize(string shapeKey, string dishTypeName, Sprite sprite, float alpha, int shapeWidth, int shapeHeight, float cellSize)
         {
-            _dishTypeKey = dishTypeKey;
+            _shapeKey = shapeKey;
 
-            _spriteRenderer = GetComponent<SpriteRenderer>();
-            if (_spriteRenderer == null)
-                _spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sprite = sprite;
+                spriteRenderer.color = new Color(1f, 1f, 1f, alpha);
 
-            _spriteRenderer.sprite = sprite;
-            _spriteRenderer.color = new Color(1f, 1f, 1f, alpha);
-            _spriteRenderer.sortingOrder = 0;
+                if (sprite != null)
+                {
+                    var spriteSize = sprite.bounds.size;
+                    var targetWidth = shapeWidth * cellSize;
+                    var targetHeight = shapeHeight * cellSize;
+                    spriteRenderer.transform.localScale = new Vector3(
+                        targetWidth / spriteSize.x,
+                        targetHeight / spriteSize.y,
+                        1f
+                    );
+                }
+            }
 
-            EnsureCollider();
-        }
-
-        private void EnsureCollider()
-        {
-            if (GetComponent<Collider2D>() != null) return;
-
-            var col = gameObject.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
+            if (label != null)
+            {
+                label.text = dishTypeName ?? shapeKey;
+            }
         }
     }
 }

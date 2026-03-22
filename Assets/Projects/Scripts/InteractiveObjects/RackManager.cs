@@ -132,9 +132,13 @@ namespace Projects.Scripts.InteractiveObjects
 
                 var info = new PlacedDishInfo(
                     piece.DishTypeKey,
+                    piece.Shape.name,
+                    piece.Shape.DishTypeName,
                     piece.SelectedDishSprite,
                     piece.PlacedGridOrigin,
-                    piece.Shape.GetFilledCells()
+                    piece.Shape.GetFilledCells(),
+                    piece.Shape.Width,
+                    piece.Shape.Height
                 );
                 data.Dishes.Add(info);
             }

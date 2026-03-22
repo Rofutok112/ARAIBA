@@ -11,6 +11,10 @@ namespace Projects.Scripts.Puzzle
         [SerializeField] private int height = 3;
         [SerializeField] private bool[] cells;
 
+        [Header("Dish Info")]
+        [Tooltip("皿の種類名（例: 大皿、小皿、コップ）")]
+        [SerializeField] private string dishTypeName;
+
         [Header("Dish Visual")]
         [SerializeField] private Sprite[] dishSprites;
 
@@ -21,6 +25,7 @@ namespace Projects.Scripts.Puzzle
 
         public int Width => width;
         public int Height => height;
+        public string DishTypeName => dishTypeName;
         public IReadOnlyList<Sprite> DishSprites => dishSprites;
         public float RefillIntervalSeconds => refillIntervalSeconds;
 

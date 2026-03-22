@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 499c2eb9866cca540b9d6afc3b3d0b77, type: 3}
+  m_Name: ShapePool
+  m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.ShapePool
+  shapes:
+  - {fileID: 11400000, guid: f3139b89ea4fbe64f94d35072d343668, type: 2}
+  - {fileID: 11400000, guid: c3d8ad3a214b54f4f919b20453d33985, type: 2}
+  - {fileID: 11400000, guid: 295c0fa220f669a439552db190d59721, type: 2}
+  - {fileID: 11400000, guid: dcfe1d2ea57ea014db527cb30efd7c16, type: 2}
+  - {fileID: 11400000, guid: 809f75c8ad873b647848eeda5cd7741a, type: 2}
+  - {fileID: 11400000, guid: 3b51fb0ff1ca42c4c8ec5e53c41496a9, type: 2}
