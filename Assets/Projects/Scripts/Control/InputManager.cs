@@ -9,8 +9,20 @@ namespace Projects.Scripts.Control
     {
         [SerializeField] private RawImage rawImage;
         [SerializeField] private Camera renderTextureCamera;
+        [SerializeField] private LayerMask raycastMask = Physics2D.DefaultRaycastLayers;
 
         private IInputHandler _currentHandler;
+        private LayerMask _defaultRaycastMask;
+
+        private void Awake()
+        {
+            if (raycastMask.value == 0)
+            {
+                raycastMask = Physics2D.DefaultRaycastLayers;
+            }
+
+            _defaultRaycastMask = raycastMask;
+        }
         
         private void Update()
         {
@@ -67,10 +79,20 @@ namespace Projects.Scripts.Control
             if (!TryGetRenderTextureScreenPoint(screenPosition, out var worldPoint)) return false;
 
             var cameraRay = renderTextureCamera.ScreenPointToRay(worldPoint);
-            var raycastHit = Physics2D.GetRayIntersection(cameraRay);
+            var raycastHit = Physics2D.GetRayIntersection(cameraRay, Mathf.Infinity, raycastMask);
 
             if (raycastHit.collider == null) return false;
             return raycastHit.collider.TryGetComponent(out handler);
+        }
+
+        public void SetRaycastMaskOverride(LayerMask overrideMask)
+        {
+            raycastMask = overrideMask;
+        }
+
+        public void ClearRaycastMaskOverride()
+        {
+            raycastMask = _defaultRaycastMask;
         }
 
         private enum InputPhase

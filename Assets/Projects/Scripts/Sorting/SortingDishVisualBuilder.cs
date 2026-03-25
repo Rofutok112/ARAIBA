@@ -11,9 +11,10 @@ namespace Projects.Scripts.Sorting
             {
                 spriteRenderer = root.gameObject.AddComponent<SpriteRenderer>();
             }
-
+            
+            spriteRenderer.sortingLayerName = "Dish";
             spriteRenderer.sprite = sprite;
-            spriteRenderer.sortingOrder = 10;
+            spriteRenderer.sortingOrder = 0;
 
             if (sprite != null)
             {
@@ -27,9 +28,21 @@ namespace Projects.Scripts.Sorting
                 );
             }
 
-            if (root.GetComponent<Collider2D>() == null)
+            var boxCollider = root.GetComponent<BoxCollider2D>();
+            if (boxCollider == null)
             {
-                root.gameObject.AddComponent<BoxCollider2D>();
+                boxCollider = root.gameObject.AddComponent<BoxCollider2D>();
+            }
+
+            if (sprite != null)
+            {
+                boxCollider.offset = sprite.bounds.center;
+                boxCollider.size = sprite.bounds.size;
+            }
+            else
+            {
+                boxCollider.offset = Vector2.zero;
+                boxCollider.size = new Vector2(shapeWidth * cellSize.x, shapeHeight * cellSize.y);
             }
 
             return spriteRenderer;

@@ -1,9 +1,7 @@
 using System;
 using Cysharp.Threading.Tasks;
-using Projects.Scripts.Audio;
 using Projects.Scripts.BackGround;
 using Projects.Scripts.Control;
-using Projects.Scripts.Sorting;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -13,10 +11,10 @@ namespace Projects.Scripts.InteractiveObjects
     {
         Idle,
         Running,
-        Done,
+        ReadyToUnload,
     }
 
-    public class DishWasher : MonoBehaviour, IInputHandler
+    public class DishWasher : MonoBehaviour, IInputHandler, IInteractionHintTarget
     {
         [Header("Settings")]
         [SerializeField, Min(1f)] private float washDuration = 10f;
@@ -24,34 +22,32 @@ namespace Projects.Scripts.InteractiveObjects
         [Header("References")]
         [SerializeField] private RackManager rackManager;
         [SerializeField] private WasherAnim washerAnim;
-        [SerializeField] private SortingManager sortingManager;
-
-        [Header("Audio")]
-        [SerializeField] private AudioClip washerStartClip;
-        [SerializeField] private AudioClip washingNoiseClip;
-        [SerializeField] private AudioClip washingCompleteClip;
 
         [Header("Events")]
+        [SerializeField] private UnityEvent onWashStarted;
         [SerializeField] private UnityEvent<float> onWashProgressChanged;
+        [SerializeField] private UnityEvent<float> onWashCompleted;
         [SerializeField] private UnityEvent<DishWasherState> onStateChanged;
 
         private DishWasherState _state = DishWasherState.Idle;
         private Rack _currentRack;
+        private float _completedWashElapsedSeconds;
+        private float _totalRunningSeconds;
+        private SpriteRenderer _spriteRenderer;
 
         public DishWasherState State => _state;
         public Rack CurrentRack => _currentRack;
+        public float TotalRunningSeconds => _totalRunningSeconds;
+        public bool ShouldShowInteractionHint => HasRackReadyToWash() || HasRackReadyToUnload();
+        public SpriteRenderer HintSpriteRenderer => _spriteRenderer;
 
-        private void Start()
+        private void Awake()
         {
-            AudioManager.Register("WashingNoise", washingNoiseClip);
-            AudioManager.Register("WashingStart", washerStartClip);
-            AudioManager.Register("WashingComplete", washingCompleteClip);
+            _spriteRenderer = GetComponent<SpriteRenderer>();
         }
 
         public void OnInputBegin(Vector2 pos)
         {
-            if (InteractionLock.IsLocked) return;
-
             switch (_state)
             {
                 case DishWasherState.Idle:
@@ -59,7 +55,7 @@ namespace Projects.Scripts.InteractiveObjects
                     break;
                 case DishWasherState.Running:
                     break;
-                case DishWasherState.Done:
+                case DishWasherState.ReadyToUnload:
                     TakeOutRack();
                     break;
             }
@@ -92,46 +88,50 @@ namespace Projects.Scripts.InteractiveObjects
             rack.SetState(RackState.Washed);
             rack.gameObject.SetActive(true);
             _currentRack = null;
+            _completedWashElapsedSeconds = 0f;
 
             SetState(DishWasherState.Idle);
-
-            // 選別画面を開始
-            if (sortingManager != null)
-            {
-                sortingManager.StartSorting(rack);
-            }
-
-            // 次のPackedラックがあれば即座に洗浄開始
-            TryStartWashing();
         }
 
         private async UniTaskVoid RunWashTimer()
         {
-            AudioManager.PlayOneShot("WashingStart", volume: 0.7f);
-            AudioManager.Play("WashingNoise", volume: 0.2f, loop: true);
+            onWashStarted?.Invoke();
             washerAnim?.StartVibration();
 
             var remaining = washDuration;
+            var elapsed = 0f;
             while (remaining > 0f)
             {
                 await UniTask.Yield();
+                elapsed += Time.deltaTime;
                 remaining -= Time.deltaTime;
                 var normalized = Mathf.Clamp01(remaining / washDuration);
                 onWashProgressChanged?.Invoke(normalized);
             }
 
             washerAnim?.StopVibration();
-            AudioManager.Stop("WashingNoise");
-            AudioManager.PlayOneShot("WashingComplete", volume: 0.7f);
 
             onWashProgressChanged?.Invoke(0f);
-            SetState(DishWasherState.Done);
+            _completedWashElapsedSeconds = Mathf.Min(elapsed, washDuration);
+            _totalRunningSeconds += _completedWashElapsedSeconds;
+            onWashCompleted?.Invoke(_completedWashElapsedSeconds);
+            SetState(DishWasherState.ReadyToUnload);
         }
 
         private void SetState(DishWasherState newState)
         {
             _state = newState;
             onStateChanged?.Invoke(newState);
+        }
+
+        private bool HasRackReadyToWash()
+        {
+            return _state == DishWasherState.Idle && rackManager != null && rackManager.FindPackedRack() != null;
+        }
+
+        private bool HasRackReadyToUnload()
+        {
+            return _state == DishWasherState.ReadyToUnload && _currentRack != null;
         }
 
         public void OnInputDrag(Vector2 pos) { }

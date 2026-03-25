@@ -15,6 +15,8 @@ namespace Projects.Scripts.Sorting
         private readonly SlotLayoutDirection _targetDirection;
         private readonly float _targetAlpha;
         private readonly Vector2 _cellLocalSize;
+        private readonly Vector3 _stackPieceOffset;
+        private readonly int _stackBaseSortingOrder;
 
         public SortingTargetFactory(
             Transform parent,
@@ -25,7 +27,9 @@ namespace Projects.Scripts.Sorting
             float lineSpacing,
             SlotLayoutDirection targetDirection,
             float targetAlpha,
-            Vector2 cellLocalSize)
+            Vector2 cellLocalSize,
+            Vector3 stackPieceOffset,
+            int stackBaseSortingOrder)
         {
             _parent = parent;
             _targetPrefab = targetPrefab;
@@ -36,6 +40,8 @@ namespace Projects.Scripts.Sorting
             _targetDirection = targetDirection;
             _targetAlpha = targetAlpha;
             _cellLocalSize = cellLocalSize;
+            _stackPieceOffset = stackPieceOffset;
+            _stackBaseSortingOrder = stackBaseSortingOrder;
         }
 
         public List<SortingTarget> CreateTargets(IReadOnlyList<PuzzlePieceShape> shapes)
@@ -60,7 +66,9 @@ namespace Projects.Scripts.Sorting
                     _targetAlpha,
                     shape.Width,
                     shape.Height,
-                    _cellLocalSize
+                    _cellLocalSize,
+                    _stackPieceOffset,
+                    _stackBaseSortingOrder
                 );
                 createdTargets.Add(target);
             }

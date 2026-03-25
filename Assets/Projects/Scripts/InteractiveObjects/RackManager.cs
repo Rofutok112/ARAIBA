@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Projects.Scripts.Control;
 using Projects.Scripts.Puzzle;
+using Projects.Scripts.Sorting;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -20,6 +22,12 @@ namespace Projects.Scripts.InteractiveObjects
         [Tooltip("パズルグリッドビュー")]
         [SerializeField] private PuzzleGridView puzzleGridView;
 
+        [Header("Input")]
+        [SerializeField] private InputStateRouter inputStateRouter;
+
+        [Header("Sorting")]
+        [SerializeField] private SortingManager sortingManager;
+
         [Header("Racks")]
         [Tooltip("管理対象のラック一覧")]
         [SerializeField] private List<Rack> racks;
@@ -31,6 +39,32 @@ namespace Projects.Scripts.InteractiveObjects
         /// 現在パズル中のラック（null = パズル画面を開いていない）
         /// </summary>
         private Rack _activeRack;
+
+        private void Awake()
+        {
+            if (inputStateRouter == null)
+            {
+                inputStateRouter = FindFirstObjectByType<InputStateRouter>();
+            }
+
+            if (inputStateRouter == null)
+            {
+                var inputManager = FindFirstObjectByType<InputManager>();
+                if (inputManager != null)
+                {
+                    inputStateRouter = inputManager.GetComponent<InputStateRouter>();
+                    if (inputStateRouter == null)
+                    {
+                        inputStateRouter = inputManager.gameObject.AddComponent<InputStateRouter>();
+                    }
+                }
+            }
+
+            if (sortingManager == null)
+            {
+                sortingManager = FindFirstObjectByType<SortingManager>();
+            }
+        }
 
         private void OnEnable()
         {
@@ -60,6 +94,9 @@ namespace Projects.Scripts.InteractiveObjects
                 case RackState.Empty:
                     OpenPuzzle(rack);
                     break;
+                case RackState.Washed:
+                    StartSorting(rack);
+                    break;
             }
         }
 
@@ -76,9 +113,15 @@ namespace Projects.Scripts.InteractiveObjects
             puzzlePieceGenerator.ResetPuzzle();
             puzzleWindow.SetActive(true);
             puzzleGridView.PlayOpeningAnimation();
-            InteractionLock.IsLocked = true;
+            inputStateRouter?.SetOperationState(InputOperationState.Puzzle);
 
             onPuzzleWindowActivated.Invoke();
+        }
+
+        private void StartSorting(Rack rack)
+        {
+            if (rack == null || sortingManager == null) return;
+            sortingManager.StartSorting(rack);
         }
 
         /// <summary>
@@ -93,12 +136,10 @@ namespace Projects.Scripts.InteractiveObjects
             _activeRack.SavePlacementData(data);
             _activeRack.SetState(RackState.Packed);
 
-            PuzzleScoreStore.SaveScore(data.Occupancy);
-
             puzzleGridView.PlayClosingAnimation();
             puzzleWindow.SetActive(false);
             _activeRack = null;
-            InteractionLock.IsLocked = false;
+            inputStateRouter?.ResetToDefault();
 
             onPuzzleConfirmed.Invoke();
         }
@@ -140,7 +181,8 @@ namespace Projects.Scripts.InteractiveObjects
                     piece.PlacedGridOrigin,
                     piece.Shape.GetFilledCells(),
                     piece.Shape.Width,
-                    piece.Shape.Height
+                    piece.Shape.Height,
+                    piece.Shape.ScorePoints
                 );
                 data.Dishes.Add(info);
             }

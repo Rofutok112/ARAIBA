@@ -28,8 +28,9 @@ namespace Projects.Scripts.InteractiveObjects
         public readonly Vector2Int[] ShapeCells;
         public readonly int ShapeWidth;
         public readonly int ShapeHeight;
+        public readonly int ScorePoints;
 
-        public PlacedDishInfo(string dishTypeKey, string shapeKey, string dishTypeName, Sprite sprite, Vector2Int gridOrigin, Vector2Int[] shapeCells, int shapeWidth, int shapeHeight)
+        public PlacedDishInfo(string dishTypeKey, string shapeKey, string dishTypeName, Sprite sprite, Vector2Int gridOrigin, Vector2Int[] shapeCells, int shapeWidth, int shapeHeight, int scorePoints)
         {
             DishTypeKey = dishTypeKey;
             ShapeKey = shapeKey;
@@ -39,6 +40,7 @@ namespace Projects.Scripts.InteractiveObjects
             ShapeCells = shapeCells;
             ShapeWidth = shapeWidth;
             ShapeHeight = shapeHeight;
+            ScorePoints = scorePoints;
         }
     }
 }

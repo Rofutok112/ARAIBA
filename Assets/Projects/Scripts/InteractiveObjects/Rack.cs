@@ -14,7 +14,7 @@ namespace Projects.Scripts.InteractiveObjects
         Sorting,
     }
 
-    public class Rack : MonoBehaviour, IInputHandler
+    public class Rack : MonoBehaviour, IInputHandler, IInteractionHintTarget
     {
         [Header("Sprites")]
         [Tooltip("空のラックのスプライト")]
@@ -29,6 +29,8 @@ namespace Projects.Scripts.InteractiveObjects
 
         public RackState State => _state;
         public RackPlacementData PlacementData => _placementData;
+        public bool ShouldShowInteractionHint => _state == RackState.Empty || _state == RackState.Washed;
+        public SpriteRenderer HintSpriteRenderer => _spriteRenderer;
 
         public event Action<Rack> OnClicked;
 
@@ -63,7 +65,6 @@ namespace Projects.Scripts.InteractiveObjects
 
         public void OnInputBegin(Vector2 pos)
         {
-            if (InteractionLock.IsLocked) return;
             OnClicked?.Invoke(this);
         }
 

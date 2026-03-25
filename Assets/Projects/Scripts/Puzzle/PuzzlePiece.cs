@@ -14,6 +14,9 @@ namespace Projects.Scripts.Puzzle
     /// </summary>
     public class PuzzlePiece : MonoBehaviour, IInputHandler
     {
+        private const int DragFrontSortingOrderStart = 1000;
+        private static int s_nextDragSortingOrder = DragFrontSortingOrderStart;
+
         private PuzzlePieceShape _shape;
         private PuzzleGridView _gridView;
 
@@ -32,7 +35,7 @@ namespace Projects.Scripts.Puzzle
 
         private Vector2 _dragOffset;
         private Vector3 _originalScale;
-        private Vector2 _spawnPosition;
+        private Vector3 _spawnLocalPosition;
         private bool _isPlaced;
         private bool _returnToSpawnOnFailedPlacement = true;
         private bool _isInitialized;
@@ -105,7 +108,7 @@ namespace Projects.Scripts.Puzzle
 
             _isInitialized = true;
             ApplyBaseCellScale();
-            _spawnPosition = transform.position;
+            _spawnLocalPosition = transform.localPosition;
             _originalScale = transform.localScale;
             CreatePieceVisuals();
         }
@@ -129,13 +132,13 @@ namespace Projects.Scripts.Puzzle
             }
         }
 
-        public void ConfigureStackPresentation(Vector3 worldPosition, int orderInLayer, bool isInteractable)
+        public void ConfigureStackPresentationLocal(Vector3 localPosition, int orderInLayer, bool isInteractable)
         {
             if (_isPlaced) return;
 
             _orderInLayer = Mathf.Clamp(orderInLayer, 0, 19);
-            transform.position = worldPosition;
-            _spawnPosition = worldPosition;
+            transform.localPosition = localPosition;
+            _spawnLocalPosition = localPosition;
 
             if (_dishRenderer != null)
             {
@@ -160,9 +163,14 @@ namespace Projects.Scripts.Puzzle
         public void OnInputBegin(Vector2 pos)
         {
             if (_isPlaced) return;
-            
+
             AudioManager.PlayOneShot("PieceClick");
-            
+
+            if (_dishRenderer != null)
+            {
+                _dishRenderer.sortingOrder = s_nextDragSortingOrder++;
+            }
+
             _dragOffset = (Vector2)transform.position - pos;
             ApplyFullScale(dragScale);
             SetAlpha(dragAlpha);
@@ -213,7 +221,7 @@ namespace Projects.Scripts.Puzzle
             {
                 if (_returnToSpawnOnFailedPlacement)
                 {
-                    transform.position = _spawnPosition;
+                    transform.localPosition = _spawnLocalPosition;
                     AudioManager.PlayOneShot("PieceCancel");
                     ApplyStockScale();
                 }

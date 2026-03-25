@@ -15,16 +15,23 @@ namespace Projects.Scripts.Puzzle
 
         public static void SaveScore(float score)
         {
-            var normalizedScore = Mathf.Clamp01(score);
+            var clampedScore = Mathf.Max(0f, score);
 
-            PlayerPrefs.SetFloat(LatestScoreKey, normalizedScore);
+            PlayerPrefs.SetFloat(LatestScoreKey, clampedScore);
 
-            if (normalizedScore > BestScore)
+            if (clampedScore > BestScore)
             {
-                PlayerPrefs.SetFloat(BestScoreKey, normalizedScore);
+                PlayerPrefs.SetFloat(BestScoreKey, clampedScore);
             }
 
             PlayerPrefs.Save();
+        }
+
+        public static float AddScore(float delta)
+        {
+            var nextScore = LatestScore + Mathf.Max(0f, delta);
+            SaveScore(nextScore);
+            return nextScore;
         }
     }
 }

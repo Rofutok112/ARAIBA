@@ -8,10 +8,10 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - PuzzleInput
   - Water
   - UI
-  - 
+  - SortingInput
   - 
   - 
   - 
@@ -40,6 +40,12 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Dish
+    uniqueID: 3370129199
+    locked: 0
+  - name: FrontFrame
+    uniqueID: 558103253
     locked: 0
   m_RenderingLayers:
   - Default

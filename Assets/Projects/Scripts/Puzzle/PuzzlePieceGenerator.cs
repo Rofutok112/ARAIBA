@@ -16,8 +16,6 @@ namespace Projects.Scripts.Puzzle
     /// </summary>
     public class PuzzlePieceGenerator : MonoBehaviour
     {
-        private const int MaxSupportedOrderInLayer = 20;
-
         [Header("Piece Settings")]
         [Tooltip("形状プール（ScriptableObject）")]
         [SerializeField] private ShapePool shapePool;
@@ -45,40 +43,25 @@ namespace Projects.Scripts.Puzzle
         [SerializeField] private SlotLayoutDirection slotDirection = SlotLayoutDirection.Horizontal;
 
         [Header("Refill Settings")]
-        [Tooltip("各スロットの初期枚数")]
-        [SerializeField, Range(1, MaxSupportedOrderInLayer)] private int initialPiecesPerSlot = 5;
-
-        [Tooltip("各スロットの最大枚数")]
-        [SerializeField, Range(1, MaxSupportedOrderInLayer)] private int maxPiecesPerSlot = MaxSupportedOrderInLayer;
+        [SerializeField] private PuzzlePieceRefillSettings refillSettings;
 
         [Tooltip("同じスロット内で重ね表示するときの1枚ごとのオフセット")]
         [SerializeField] private Vector3 stackPieceOffset = new(0.04f, 0.04f, 0f);
 
-        private PuzzlePiece[] _slots;
-        private Vector3[] _slotLocalPositions;
-        private PuzzlePieceSlotState[] _slotStates;
-        private readonly Dictionary<PuzzlePiece, int> _pieceToSlotIndex = new();
+        private readonly PuzzlePieceSlotRegistry _slotRegistry = new();
 
         public event Action OnAllPiecesPlaced;
         public event Action OnPiecesGenerated;
         public event Action<PuzzlePiece> OnPiecePlacedOnGrid;
         public event Action<float> OnTraySubmitted;
 
-        public IReadOnlyList<PuzzlePiece> Slots => _slots;
+        public IReadOnlyList<PuzzlePiece> Slots => _slotRegistry.Slots;
 
         public int RemainingPieceCount
         {
             get
             {
-                if (_slotStates == null) return 0;
-
-                var count = 0;
-                foreach (var state in _slotStates)
-                {
-                    count += state?.Pieces.Count ?? 0;
-                }
-
-                return count;
+                return _slotRegistry.RemainingPieceCount;
             }
         }
 
@@ -91,13 +74,14 @@ namespace Projects.Scripts.Puzzle
             }
         }
 
-        private PuzzlePieceSlotLayout SlotLayout => new(
+        private PuzzlePieceSlotPresenter SlotPresenter => new(
             transform,
             slotAreaOffset,
             slotSpacing,
             slotsPerLine,
             lineSpacing,
-            slotDirection
+            slotDirection,
+            stackPieceOffset
         );
 
         private PuzzlePieceFactory PieceFactory => new(transform, piecePrefab, gridView, HandlePiecePlaced);
@@ -114,16 +98,7 @@ namespace Projects.Scripts.Puzzle
 
         private void InitializeSlots(int slotCount)
         {
-            _slots = new PuzzlePiece[slotCount];
-            _slotLocalPositions = new Vector3[slotCount];
-            _slotStates = new PuzzlePieceSlotState[slotCount];
-
-            var layout = SlotLayout;
-            for (var i = 0; i < slotCount; i++)
-            {
-                _slotLocalPositions[i] = layout.GetSlotLocalPosition(i, slotCount);
-                _slotStates[i] = new PuzzlePieceSlotState();
-            }
+            _slotRegistry.Initialize(slotCount);
         }
 
         public void GenerateAllPieces()
@@ -141,27 +116,31 @@ namespace Projects.Scripts.Puzzle
                 return;
             }
 
-            if (_slotStates == null || _slotStates.Length != availableShapes.Count)
+            if (refillSettings == null)
+            {
+                Debug.LogWarning("[PuzzlePieceGenerator] Refill Settings が設定されていません。");
+                return;
+            }
+
+            if (!_slotRegistry.MatchesSlotCount(availableShapes.Count))
             {
                 InitializeSlots(availableShapes.Count);
             }
 
             ClearAllPieces();
-            var initialCount = Mathf.Clamp(initialPiecesPerSlot, 1, Mathf.Min(maxPiecesPerSlot, MaxSupportedOrderInLayer));
+            var initialCount = refillSettings.InitialPiecesPerSlot;
 
             for (var i = 0; i < availableShapes.Count; i++)
             {
-                var state = _slotStates[i];
-                state.shape = availableShapes[i];
-                PuzzlePieceRefillScheduler.Reset(ref state.refillState);
+                _slotRegistry.AssignShape(i, availableShapes[i]);
 
-                if (state.shape == null)
+                if (availableShapes[i] == null)
                 {
                     Debug.LogWarning($"[PuzzlePieceGenerator] スロット{i}に適切な形状が見つかりませんでした。");
                     continue;
                 }
 
-                RefillSlot(i, initialCount, availableShapes.Count);
+                RefillSlot(i, initialCount);
             }
 
             OnPiecesGenerated?.Invoke();
@@ -169,15 +148,14 @@ namespace Projects.Scripts.Puzzle
 
         private void ProcessTimedRefill()
         {
-            if (_slotStates == null) return;
+            if (_slotRegistry.SlotCount == 0) return;
 
             var generatedAny = false;
-            for (var i = 0; i < _slotStates.Length; i++)
+            for (var i = 0; i < _slotRegistry.SlotCount; i++)
             {
-                var state = _slotStates[i];
-                if (state == null || state.shape == null) continue;
+                if (!_slotRegistry.TryGetState(i, out var state) || state.shape == null) continue;
 
-                if (state.Pieces.Count >= maxPiecesPerSlot)
+                if (state.Pieces.Count >= refillSettings.MaxPiecesPerSlot)
                 {
                     PuzzlePieceRefillScheduler.MarkFull(ref state.refillState);
                     continue;
@@ -185,14 +163,14 @@ namespace Projects.Scripts.Puzzle
 
                 PuzzlePieceRefillScheduler.EnsureScheduled(ref state.refillState, state.shape, Time.time);
 
-                while (PuzzlePieceRefillScheduler.ShouldRefill(state.refillState, state.Pieces.Count, maxPiecesPerSlot, Time.time))
+                while (PuzzlePieceRefillScheduler.ShouldRefill(state.refillState, state.Pieces.Count, refillSettings.MaxPiecesPerSlot, Time.time))
                 {
-                    RefillSlot(i, 1, _slotStates.Length);
+                    RefillSlot(i, 1);
                     PuzzlePieceRefillScheduler.Advance(ref state.refillState, state.shape);
                     generatedAny = true;
                 }
 
-                if (state.Pieces.Count >= maxPiecesPerSlot)
+                if (state.Pieces.Count >= refillSettings.MaxPiecesPerSlot)
                 {
                     PuzzlePieceRefillScheduler.MarkFull(ref state.refillState);
                 }
@@ -218,59 +196,36 @@ namespace Projects.Scripts.Puzzle
             return uniqueShapes;
         }
 
-        private void RefillSlot(int slotIndex, int amount, int slotCount)
+        private void RefillSlot(int slotIndex, int amount)
         {
-            var state = _slotStates[slotIndex];
-            if (state?.shape == null) return;
+            if (!_slotRegistry.TryGetState(slotIndex, out var state) || state.shape == null) return;
 
-            var spawnCount = Mathf.Min(amount, maxPiecesPerSlot - state.Pieces.Count);
+            var spawnCount = Mathf.Min(amount, refillSettings.MaxPiecesPerSlot - state.Pieces.Count);
+            var slotLocalPosition = SlotPresenter.GetSlotLocalPosition(slotIndex, _slotRegistry.SlotCount);
             for (var i = 0; i < spawnCount; i++)
             {
-                var piece = PieceFactory.Create(state.shape, GetSlotWorldPosition(slotIndex, slotCount));
-                state.Pieces.Add(piece);
-                _pieceToSlotIndex[piece] = slotIndex;
+                var piece = PieceFactory.Create(state.shape, slotLocalPosition);
+                _slotRegistry.RegisterPiece(slotIndex, piece);
             }
 
-            RefreshSlotVisuals(slotIndex, slotCount);
-        }
-
-        private void RefreshSlotVisuals(int slotIndex, int slotCount)
-        {
-            var state = _slotStates[slotIndex];
-            if (state == null) return;
-
-            for (var i = 0; i < state.Pieces.Count; i++)
-            {
-                var piece = state.Pieces[i];
-                if (piece == null) continue;
-
-                var position = GetSlotWorldPosition(slotIndex, slotCount) + stackPieceOffset * i;
-                var isTopPiece = i == state.Pieces.Count - 1;
-                piece.ConfigureStackPresentation(position, i, isTopPiece);
-            }
-
-            _slots[slotIndex] = state.Pieces.Count > 0 ? state.Pieces[^1] : null;
+            SlotPresenter.RefreshSlotVisuals(_slotRegistry, slotIndex);
         }
 
         private void HandlePiecePlaced(PuzzlePiece piece)
         {
             OnPiecePlacedOnGrid?.Invoke(piece);
 
-            if (!_pieceToSlotIndex.TryGetValue(piece, out var slotIndex))
+            if (!_slotRegistry.TryTakePiece(piece, out var slotIndex, out var state))
             {
                 return;
             }
 
-            var state = _slotStates[slotIndex];
-            _pieceToSlotIndex.Remove(piece);
-            state.Pieces.Remove(piece);
-
-            if (state.Pieces.Count < maxPiecesPerSlot)
+            if (state.Pieces.Count < refillSettings.MaxPiecesPerSlot)
             {
                 PuzzlePieceRefillScheduler.EnsureScheduled(ref state.refillState, state.shape, Time.time);
             }
 
-            RefreshSlotVisuals(slotIndex, _slotStates.Length);
+            SlotPresenter.RefreshSlotVisuals(_slotRegistry, slotIndex);
 
             if (RemainingPieceCount == 0)
             {
@@ -292,31 +247,7 @@ namespace Projects.Scripts.Puzzle
 
         public void ClearAllPieces()
         {
-            if (_slotStates == null) return;
-
-            foreach (var state in _slotStates)
-            {
-                if (state == null) continue;
-
-                foreach (var piece in state.Pieces)
-                {
-                    if (piece != null)
-                    {
-                        Destroy(piece.gameObject);
-                    }
-                }
-
-                state.Pieces.Clear();
-                PuzzlePieceRefillScheduler.Reset(ref state.refillState);
-            }
-
-            _pieceToSlotIndex.Clear();
-
-            if (_slots == null) return;
-            for (var i = 0; i < _slots.Length; i++)
-            {
-                _slots[i] = null;
-            }
+            _slotRegistry.ClearTrackedPieces();
         }
 
         public void ResetAndRegenerate()
@@ -336,21 +267,9 @@ namespace Projects.Scripts.Puzzle
             GenerateAllPieces();
         }
 
-        private Vector3 GetSlotWorldPosition(int slotIndex, int slotCount)
-        {
-            if (_slotLocalPositions == null || slotIndex < 0 || slotIndex >= _slotLocalPositions.Length)
-            {
-                return transform.position;
-            }
-
-            return SlotLayout.GetSlotWorldPosition(slotIndex, slotCount);
-        }
-
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            maxPiecesPerSlot = Mathf.Clamp(maxPiecesPerSlot, 1, MaxSupportedOrderInLayer);
-            initialPiecesPerSlot = Mathf.Clamp(initialPiecesPerSlot, 1, maxPiecesPerSlot);
             slotsPerLine = Mathf.Max(1, slotsPerLine);
         }
 
@@ -359,15 +278,14 @@ namespace Projects.Scripts.Puzzle
             var slotCount = GetAvailableShapes().Count;
             if (slotCount <= 0) return;
 
-            var layout = SlotLayout;
             Gizmos.color = new Color(0.2f, 0.8f, 0.3f, 0.5f);
 
             for (var i = 0; i < slotCount; i++)
             {
-                var pos = layout.GetSlotWorldPosition(i, slotCount);
+                var pos = SlotPresenter.GetSlotPreviewWorldPosition(i, slotCount);
                 Gizmos.DrawSphere(pos, 0.1f);
 
-                var topPos = pos + stackPieceOffset * Mathf.Max(initialPiecesPerSlot - 1, 0);
+                var topPos = pos + stackPieceOffset * Mathf.Max((refillSettings != null ? refillSettings.InitialPiecesPerSlot : 1) - 1, 0);
                 Gizmos.DrawLine(pos, topPos);
             }
         }

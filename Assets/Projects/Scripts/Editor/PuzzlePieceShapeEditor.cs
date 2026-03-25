@@ -31,6 +31,7 @@ namespace Projects.Scripts.Editor
         private SerializedProperty _dishTypeNameProp;
         private SerializedProperty _dishSpritesProp;
         private SerializedProperty _refillIntervalSecondsProp;
+        private SerializedProperty _scorePointsProp;
         private bool _showPresets;
         private Vector2 _presetsScroll;
 
@@ -42,6 +43,7 @@ namespace Projects.Scripts.Editor
             _dishTypeNameProp = serializedObject.FindProperty("dishTypeName");
             _dishSpritesProp = serializedObject.FindProperty("dishSprites");
             _refillIntervalSecondsProp = serializedObject.FindProperty("refillIntervalSeconds");
+            _scorePointsProp = serializedObject.FindProperty("scorePoints");
         }
 
         public override void OnInspectorGUI()
@@ -52,6 +54,9 @@ namespace Projects.Scripts.Editor
             EditorGUILayout.Space(HeaderSpacing);
 
             EditorGUILayout.PropertyField(_dishTypeNameProp, new GUIContent("Dish Type Name"));
+            EditorGUILayout.Space(HeaderSpacing);
+
+            DrawScoreSettings();
             EditorGUILayout.Space(HeaderSpacing);
 
             DrawSizeControls();
@@ -366,6 +371,14 @@ namespace Projects.Scripts.Editor
             EditorGUILayout.LabelField("Refill Settings", EditorStyles.miniLabel);
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.PropertyField(_refillIntervalSecondsProp, new GUIContent("Refill Seconds"));
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawScoreSettings()
+        {
+            EditorGUILayout.LabelField("Score", EditorStyles.miniLabel);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.PropertyField(_scorePointsProp, new GUIContent("Score Points"));
             EditorGUILayout.EndVertical();
         }
 

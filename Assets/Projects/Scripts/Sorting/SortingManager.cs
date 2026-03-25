@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Projects.Scripts.Control;
 using Projects.Scripts.InteractiveObjects;
 using UnityEngine;
 using UnityEngine.Events;
@@ -20,12 +21,47 @@ namespace Projects.Scripts.Sorting
         [Tooltip("選別画面用のグリッド表示")]
         [SerializeField] private SortingGridView sortingGridView;
 
+        [Header("Targets")]
+        [SerializeField] private SortingTargetGroup sortingTargetGroup;
+
+        [Header("Input")]
+        [SerializeField] private InputStateRouter inputStateRouter;
+
+        [Header("Score")]
+        [SerializeField] private UnityEvent<int> onSortingScoreConfirmed;
+
         [Header("Events")]
         [SerializeField] private UnityEvent onSortingCompleted;
 
         private readonly List<SortingDish> _activeDishes = new();
         private readonly List<GameObject> _spawnedObjects = new();
         private Rack _currentRack;
+
+        private void Awake()
+        {
+            if (inputStateRouter == null)
+            {
+                inputStateRouter = FindFirstObjectByType<InputStateRouter>();
+            }
+
+            if (inputStateRouter == null)
+            {
+                var inputManager = FindFirstObjectByType<InputManager>();
+                if (inputManager != null)
+                {
+                    inputStateRouter = inputManager.GetComponent<InputStateRouter>();
+                    if (inputStateRouter == null)
+                    {
+                        inputStateRouter = inputManager.gameObject.AddComponent<InputStateRouter>();
+                    }
+                }
+            }
+
+            if (sortingTargetGroup == null)
+            {
+                sortingTargetGroup = FindFirstObjectByType<SortingTargetGroup>();
+            }
+        }
 
         /// <summary>
         /// 選別画面を開始する
@@ -38,8 +74,8 @@ namespace Projects.Scripts.Sorting
             rack.SetState(RackState.Sorting);
 
             sortingWindow.SetActive(true);
-            InteractionLock.IsLocked = true;
             SpawnDishes(rack.PlacementData);
+            inputStateRouter?.SetOperationState(InputOperationState.Sorting);
         }
 
         /// <summary>
@@ -51,8 +87,9 @@ namespace Projects.Scripts.Sorting
                 sortingGridView.transform,
                 sortingGridView.Geometry,
                 sortingGridView.CellLocalSize,
-                sortingGridView.ActiveTargets,
-                sortingGridView.TargetRadius
+                sortingTargetGroup != null ? sortingTargetGroup.ActiveTargets : null,
+                sortingTargetGroup != null ? sortingTargetGroup.TargetRadius : 1.5f,
+                InputTargetRole.Sorting
             );
 
             foreach (var dish in data.Dishes)
@@ -63,8 +100,9 @@ namespace Projects.Scripts.Sorting
             }
         }
 
-        private void OnDishSorted(SortingDish dish)
+        private void OnDishSorted(SortingDish dish, int scorePoints)
         {
+            onSortingScoreConfirmed?.Invoke(Mathf.Max(0, scorePoints));
             _activeDishes.Remove(dish);
 
             if (_activeDishes.Count == 0)
@@ -84,7 +122,7 @@ namespace Projects.Scripts.Sorting
 
             Cleanup();
             sortingWindow.SetActive(false);
-            InteractionLock.IsLocked = false;
+            inputStateRouter?.ResetToDefault();
             onSortingCompleted?.Invoke();
         }
 

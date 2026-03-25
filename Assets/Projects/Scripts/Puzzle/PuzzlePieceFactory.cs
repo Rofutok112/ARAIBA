@@ -1,4 +1,5 @@
 using System;
+using Projects.Scripts.Control;
 using UnityEngine;
 
 namespace Projects.Scripts.Puzzle
@@ -22,9 +23,13 @@ namespace Projects.Scripts.Puzzle
             _onPlaced = onPlaced;
         }
 
-        public PuzzlePiece Create(PuzzlePieceShape shape, Vector3 position)
+        public PuzzlePiece Create(PuzzlePieceShape shape, Vector3 localPosition)
         {
-            var piece = UnityEngine.Object.Instantiate(_piecePrefab, position, Quaternion.identity, _parent);
+            var piece = UnityEngine.Object.Instantiate(_piecePrefab, _parent);
+            piece.transform.localPosition = localPosition;
+            piece.transform.localRotation = Quaternion.identity;
+            var inputTargetLayer = piece.gameObject.AddComponent<InputTargetLayer>();
+            inputTargetLayer.SetRole(InputTargetRole.Puzzle);
             piece.Initialize(shape, _gridView, ChooseRandomSprite(shape), _onPlaced);
             return piece;
         }

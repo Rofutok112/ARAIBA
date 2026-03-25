@@ -35,23 +35,25 @@ namespace Projects.Scripts.Puzzle
             if (_sprite == null) return null;
 
             var dishObj = new GameObject("DishOverlay");
-            dishObj.transform.SetParent(_root, false);
-
+            var dishTransform = dishObj.transform;
+            dishTransform.SetParent(_root, false);
+            var sr = dishObj.AddComponent<SpriteRenderer>();
+            
             var bboxCenter = new Vector3(
                 (_shape.Width - 1) / 2f - center.x,
                 (_shape.Height - 1) / 2f - center.y,
                 0f
             );
-            dishObj.transform.localPosition = bboxCenter;
-
-            var sr = dishObj.AddComponent<SpriteRenderer>();
+            dishTransform.localPosition = bboxCenter;
+            
+            sr.sortingLayerName = "Dish";
             sr.sprite = _sprite;
             sr.color = Color.white;
             sr.sortingOrder = sortingOrder;
             spriteRenderers.Add(sr);
 
             var spriteSize = _sprite.bounds.size;
-            dishObj.transform.localScale = new Vector3(
+            dishTransform.localScale = new Vector3(
                 _shape.Width / spriteSize.x,
                 _shape.Height / spriteSize.y,
                 1f
@@ -157,6 +159,7 @@ namespace Projects.Scripts.Puzzle
             );
 
             var sr = dishObj.AddComponent<SpriteRenderer>();
+            sr.sortingLayerName = "Dish";
             sr.sprite = _sprite;
             sr.color = new Color(1f, 1f, 1f, previewAlpha);
             sr.sortingOrder = 5;
