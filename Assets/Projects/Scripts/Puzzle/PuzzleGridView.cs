@@ -28,14 +28,6 @@ namespace Projects.Scripts.Puzzle
             RefreshGridView();
         }
 
-        public void PlayOpeningAnimation()
-        {
-        }
-
-        public void PlayClosingAnimation()
-        {
-        }
-
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {

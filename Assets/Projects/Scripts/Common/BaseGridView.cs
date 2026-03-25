@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 namespace Projects.Scripts.Common
@@ -20,7 +23,20 @@ namespace Projects.Scripts.Common
         [Tooltip("セルの色")]
         [SerializeField] private Color cellColor = new(0.9f, 0.9f, 0.9f, 1f);
 
+        [Header("Window Animation")]
+        [SerializeField] private float animationDistance = 1.5f;
+        [SerializeField] private float animationDuration = 0.45f;
+        [SerializeField] private float startScale = 0.97f;
+        [SerializeField] private Ease openingEase = Ease.OutCubic;
+        [SerializeField] private Ease closingEase = Ease.InCubic;
+        [SerializeField] private Transform animationTargetOverride;
+
         private SpriteRenderer[,] _cellRenderers;
+        private readonly Dictionary<SpriteRenderer, float> _rendererAlphaCache = new();
+        private Sequence _activeSequence;
+        private Transform _animationTarget;
+        private Vector3 _defaultLocalPosition;
+        private Vector3 _defaultLocalScale;
 
         public GridGeometry Geometry => new(transform, gridSize, Vector2.one * LocalCellSize);
         public int GridSize => gridSize;
@@ -34,6 +50,12 @@ namespace Projects.Scripts.Common
         protected virtual void Awake()
         {
             CreateGridVisuals();
+            _animationTarget = ResolveAnimationTarget();
+            if (_animationTarget != null)
+            {
+                _defaultLocalPosition = _animationTarget.localPosition;
+                _defaultLocalScale = _animationTarget.localScale;
+            }
         }
 
         protected void RefreshGridView()
@@ -57,6 +79,61 @@ namespace Projects.Scripts.Common
         public Vector2 GridToWorldPosition(Vector2Int gridPos)
         {
             return Geometry.GridToWorldPosition(gridPos);
+        }
+
+        public void PlayOpeningAnimation(Action onComplete = null)
+        {
+            if (!TryPrepareAnimationTarget())
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            KillActiveSequence();
+            CacheRendererAlphas();
+
+            _animationTarget.localPosition = _defaultLocalPosition + Vector3.up * animationDistance;
+            _animationTarget.localScale = _defaultLocalScale * startScale;
+            SetRendererAlpha(0f);
+
+            _activeSequence = DOTween.Sequence()
+                .SetUpdate(true)
+                .SetLink(_animationTarget.gameObject)
+                .Append(_animationTarget.DOLocalMove(_defaultLocalPosition, animationDuration).SetEase(openingEase))
+                .Join(_animationTarget.DOScale(_defaultLocalScale, animationDuration).SetEase(Ease.OutQuad))
+                .Join(FadeRenderers(1f))
+                .OnComplete(() =>
+                {
+                    RestoreVisualState();
+                    _activeSequence = null;
+                    onComplete?.Invoke();
+                });
+        }
+
+        public void PlayClosingAnimation(Action onComplete = null)
+        {
+            if (!TryPrepareAnimationTarget())
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            KillActiveSequence();
+            CacheRendererAlphas();
+            RestoreVisualState();
+
+            _activeSequence = DOTween.Sequence()
+                .SetUpdate(true)
+                .SetLink(_animationTarget.gameObject)
+                .Append(_animationTarget.DOLocalMove(_defaultLocalPosition + Vector3.down * animationDistance, animationDuration).SetEase(closingEase))
+                .Join(_animationTarget.DOScale(_defaultLocalScale * startScale, animationDuration).SetEase(Ease.InQuad))
+                .Join(FadeRenderers(0f))
+                .OnComplete(() =>
+                {
+                    RestoreVisualState();
+                    _activeSequence = null;
+                    onComplete?.Invoke();
+                });
         }
 
         private void CreateGridVisuals()
@@ -92,6 +169,95 @@ namespace Projects.Scripts.Common
         protected virtual string GetCellObjectPrefix()
         {
             return "Cell";
+        }
+
+        private bool TryPrepareAnimationTarget()
+        {
+            if (_animationTarget != null) return true;
+
+            _animationTarget = ResolveAnimationTarget();
+            if (_animationTarget == null) return false;
+
+            _defaultLocalPosition = _animationTarget.localPosition;
+            _defaultLocalScale = _animationTarget.localScale;
+            return true;
+        }
+
+        private Transform ResolveAnimationTarget()
+        {
+            if (animationTargetOverride != null)
+            {
+                return animationTargetOverride;
+            }
+
+            var current = transform;
+            while (current.parent != null && current.parent.parent != null)
+            {
+                current = current.parent;
+            }
+
+            return current;
+        }
+
+        private void CacheRendererAlphas()
+        {
+            _rendererAlphaCache.Clear();
+
+            var renderers = _animationTarget.GetComponentsInChildren<SpriteRenderer>(true);
+            foreach (var spriteRenderer in renderers)
+            {
+                if (spriteRenderer == null) continue;
+                _rendererAlphaCache[spriteRenderer] = spriteRenderer.color.a;
+            }
+        }
+
+        private Tween FadeRenderers(float normalizedAlpha)
+        {
+            var fadeSequence = DOTween.Sequence();
+            foreach (var pair in _rendererAlphaCache)
+            {
+                if (pair.Key == null) continue;
+
+                var targetAlpha = pair.Value * normalizedAlpha;
+                fadeSequence.Join(pair.Key.DOFade(targetAlpha, animationDuration).SetEase(Ease.OutQuad));
+            }
+
+            return fadeSequence;
+        }
+
+        private void SetRendererAlpha(float normalizedAlpha)
+        {
+            foreach (var pair in _rendererAlphaCache)
+            {
+                if (pair.Key == null) continue;
+
+                var color = pair.Key.color;
+                color.a = pair.Value * normalizedAlpha;
+                pair.Key.color = color;
+            }
+        }
+
+        private void RestoreVisualState()
+        {
+            if (_animationTarget == null) return;
+
+            _animationTarget.localPosition = _defaultLocalPosition;
+            _animationTarget.localScale = _defaultLocalScale;
+            SetRendererAlpha(1f);
+        }
+
+        private void KillActiveSequence()
+        {
+            if (_activeSequence == null) return;
+
+            _activeSequence.Kill();
+            _activeSequence = null;
+        }
+
+        private void OnDisable()
+        {
+            KillActiveSequence();
+            RestoreVisualState();
         }
 
 #if UNITY_EDITOR

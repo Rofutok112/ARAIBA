@@ -36,6 +36,7 @@ namespace Projects.Scripts.Sorting
         private readonly List<SortingDish> _activeDishes = new();
         private readonly List<GameObject> _spawnedObjects = new();
         private Rack _currentRack;
+        private bool _isSortingTransitioning;
 
         private void Awake()
         {
@@ -68,14 +69,19 @@ namespace Projects.Scripts.Sorting
         /// </summary>
         public void StartSorting(Rack rack)
         {
-            if (rack == null || rack.PlacementData == null) return;
+            if (rack == null || rack.PlacementData == null || _currentRack != null || _isSortingTransitioning) return;
 
+            _isSortingTransitioning = true;
             _currentRack = rack;
             rack.SetState(RackState.Sorting);
 
             sortingWindow.SetActive(true);
             SpawnDishes(rack.PlacementData);
-            inputStateRouter?.SetOperationState(InputOperationState.Sorting);
+            sortingGridView.PlayOpeningAnimation(() =>
+            {
+                inputStateRouter?.SetOperationState(InputOperationState.Sorting);
+                _isSortingTransitioning = false;
+            });
         }
 
         /// <summary>
@@ -113,6 +119,10 @@ namespace Projects.Scripts.Sorting
 
         private void CompleteSorting()
         {
+            if (_isSortingTransitioning) return;
+
+            _isSortingTransitioning = true;
+
             if (_currentRack != null)
             {
                 _currentRack.ClearPlacementData();
@@ -120,10 +130,14 @@ namespace Projects.Scripts.Sorting
                 _currentRack = null;
             }
 
-            Cleanup();
-            sortingWindow.SetActive(false);
             inputStateRouter?.ResetToDefault();
-            onSortingCompleted?.Invoke();
+            sortingGridView.PlayClosingAnimation(() =>
+            {
+                Cleanup();
+                sortingWindow.SetActive(false);
+                _isSortingTransitioning = false;
+                onSortingCompleted?.Invoke();
+            });
         }
 
         private void Cleanup()

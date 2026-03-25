@@ -39,6 +39,7 @@ namespace Projects.Scripts.InteractiveObjects
         /// 現在パズル中のラック（null = パズル画面を開いていない）
         /// </summary>
         private Rack _activeRack;
+        private bool _isPuzzleTransitioning;
 
         private void Awake()
         {
@@ -105,17 +106,20 @@ namespace Projects.Scripts.InteractiveObjects
         /// </summary>
         private void OpenPuzzle(Rack rack)
         {
-            if (_activeRack != null) return;
+            if (_activeRack != null || _isPuzzleTransitioning) return;
 
+            _isPuzzleTransitioning = true;
             _activeRack = rack;
             rack.SetState(RackState.Packing);
 
             puzzlePieceGenerator.ResetPuzzle();
             puzzleWindow.SetActive(true);
-            puzzleGridView.PlayOpeningAnimation();
-            inputStateRouter?.SetOperationState(InputOperationState.Puzzle);
-
             onPuzzleWindowActivated.Invoke();
+            puzzleGridView.PlayOpeningAnimation(() =>
+            {
+                inputStateRouter?.SetOperationState(InputOperationState.Puzzle);
+                _isPuzzleTransitioning = false;
+            });
         }
 
         private void StartSorting(Rack rack)
@@ -130,18 +134,22 @@ namespace Projects.Scripts.InteractiveObjects
         /// </summary>
         public void ConfirmPuzzle()
         {
-            if (_activeRack == null) return;
+            if (_activeRack == null || _isPuzzleTransitioning) return;
+
+            _isPuzzleTransitioning = true;
 
             var data = CapturePlacementData();
             _activeRack.SavePlacementData(data);
             _activeRack.SetState(RackState.Packed);
 
-            puzzleGridView.PlayClosingAnimation();
-            puzzleWindow.SetActive(false);
-            _activeRack = null;
-            inputStateRouter?.ResetToDefault();
-
             onPuzzleConfirmed.Invoke();
+            inputStateRouter?.ResetToDefault();
+            puzzleGridView.PlayClosingAnimation(() =>
+            {
+                puzzleWindow.SetActive(false);
+                _activeRack = null;
+                _isPuzzleTransitioning = false;
+            });
         }
 
         /// <summary>
