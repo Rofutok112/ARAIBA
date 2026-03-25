@@ -6,6 +6,7 @@
 [![Pipeline](https://img.shields.io/badge/Render%20Pipeline-URP-ff6f00)](#)
 [![Input](https://img.shields.io/badge/Input%20System-New%20Input%20System-2c7be5)](#)
 [![Async](https://img.shields.io/badge/Async-UniTask-00a3a3)](#)
+[![Animation](https://img.shields.io/badge/Animation-DOTween-00a3a3)](#)
 
 ## Overview
 
