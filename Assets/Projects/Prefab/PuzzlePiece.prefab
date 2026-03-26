@@ -49,7 +49,17 @@ MonoBehaviour:
   dragAlpha: 0.5
   previewAlpha: 0.4
   stockScaleMultiplier: 0.7
-  dishSpriteRenderer: {fileID: 543633987619205814}
+  dirtyOverlaySprites:
+  - {fileID: 630585459714719306, guid: 295f7c909d1d65f40a64ff168aa5573a, type: 3}
+  - {fileID: -7600516465212640767, guid: 50fcda9a109f00f46a0264e6af88fa4a, type: 3}
+  - {fileID: -1527595075990259454, guid: 4502b46e2dfa00d4fb9a6513e6f0b3ca, type: 3}
+  dirtyCountPerFilledCell: 0.35
+  minimumDirtyOverlayCount: 3
+  maximumDirtyOverlayCount: 8
+  dirtyAlphaMin: 0.7
+  dirtyAlphaMax: 1
+  dirtyScaleRange: {x: 0.1, y: 0.1}
+  dirtySortingOrderOffset: 1
 --- !u!212 &543633987619205814
 SpriteRenderer:
   serializedVersion: 2

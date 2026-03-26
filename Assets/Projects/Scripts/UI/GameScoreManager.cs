@@ -117,7 +117,8 @@ namespace Projects.Scripts.UI
                 _totalPiecePoints,
                 TotalWasherRunningSeconds,
                 UtilizationRatio,
-                FinalResultScore);
+                FinalResultScore,
+                PuzzleScoreStore.BestScore);
         }
 
         private void RefreshTexts()

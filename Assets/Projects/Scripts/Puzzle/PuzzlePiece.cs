@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using Projects.Scripts.Audio;
 using Projects.Scripts.Common;
 using Projects.Scripts.Control;
@@ -32,6 +33,17 @@ namespace Projects.Scripts.Puzzle
 
         [Tooltip("ストック状態でのスケール倍率")]
         [SerializeField, Range(0.1f, 1f)] private float stockScaleMultiplier = 0.8f;
+        [SerializeField, Min(0f)] private float spawnFadeDuration = 0.18f;
+
+        [Header("Dirty Visuals")]
+        [SerializeField] private Sprite[] dirtyOverlaySprites;
+        [SerializeField, Min(0f)] private float dirtyCountPerFilledCell = 0.35f;
+        [SerializeField, Min(0)] private int minimumDirtyOverlayCount = 1;
+        [SerializeField, Min(0)] private int maximumDirtyOverlayCount = 6;
+        [SerializeField, Range(0f, 1f)] private float dirtyAlphaMin = 0.7f;
+        [SerializeField, Range(0f, 1f)] private float dirtyAlphaMax = 1f;
+        [SerializeField] private Vector2 dirtyScaleRange = new(0.45f, 0.8f);
+        [SerializeField, Min(0)] private int dirtySortingOrderOffset = 1;
 
         private Vector2 _dragOffset;
         private Vector3 _originalScale;
@@ -42,6 +54,7 @@ namespace Projects.Scripts.Puzzle
         private Action<PuzzlePiece> _onPlacedCallback;
         private Action<PuzzlePiece> _onFailedPlacementCallback;
         private readonly List<SpriteRenderer> _spriteRenderers = new();
+        private readonly Dictionary<SpriteRenderer, float> _baseAlphaByRenderer = new();
         private SpriteRenderer _dishRenderer;
         private GameObject _ghostObject;
         private PuzzlePieceGhostFactory _ghostFactory;
@@ -49,6 +62,7 @@ namespace Projects.Scripts.Puzzle
         private Sprite _selectedDishSprite;
         private Vector2Int _placedGridOrigin;
         private Vector2 _localCenter;
+        private Tween _spawnFadeTween;
 
         private GridGeometry? CurrentGeometry => _gridView != null ? _gridView.Geometry : null;
         private PuzzlePiecePlacement? CurrentPlacement => _shape != null && CurrentGeometry != null
@@ -102,6 +116,12 @@ namespace Projects.Scripts.Puzzle
             InitializeVisualState();
         }
 
+        private void OnDisable()
+        {
+            _spawnFadeTween?.Kill();
+            _spawnFadeTween = null;
+        }
+
         private void InitializeVisualState()
         {
             if (_isInitialized) return;
@@ -120,16 +140,35 @@ namespace Projects.Scripts.Puzzle
         {
             if (_shape == null) return;
 
-            var visualBuilder = new PuzzlePieceVisualBuilder(_shape, GetSelectedSprite(), transform);
+            var dirtSettings = new DishDirtVisualSettings(
+                dirtyOverlaySprites,
+                dirtyCountPerFilledCell,
+                minimumDirtyOverlayCount,
+                maximumDirtyOverlayCount,
+                dirtyAlphaMin,
+                dirtyAlphaMax,
+                dirtyScaleRange,
+                dirtySortingOrderOffset);
+            var visualBuilder = new PuzzlePieceVisualBuilder(_shape, GetSelectedSprite(), transform, dirtSettings);
             var visualResult = visualBuilder.Build(previewAlpha, 10 + _orderInLayer, CurrentGeometry?.CellWorldSize ?? Vector2.one);
             _localCenter = visualResult.LocalCenter;
             _dishRenderer = visualResult.DishRenderer;
             _ghostFactory = visualResult.GhostFactory;
             _spriteRenderers.Clear();
+            _baseAlphaByRenderer.Clear();
             if (visualResult.SpriteRenderers != null)
             {
                 _spriteRenderers.AddRange(visualResult.SpriteRenderers);
+                foreach (var spriteRenderer in _spriteRenderers)
+                {
+                    if (spriteRenderer != null)
+                    {
+                        _baseAlphaByRenderer[spriteRenderer] = spriteRenderer.color.a;
+                    }
+                }
             }
+
+            UpdateSortingOrders(10 + _orderInLayer);
         }
 
         public void ConfigureStackPresentationLocal(Vector3 localPosition, int orderInLayer, bool isInteractable)
@@ -140,13 +179,27 @@ namespace Projects.Scripts.Puzzle
             transform.localPosition = localPosition;
             _spawnLocalPosition = localPosition;
 
-            if (_dishRenderer != null)
-            {
-                _dishRenderer.sortingOrder = 10 + _orderInLayer;
-            }
+            UpdateSortingOrders(10 + _orderInLayer);
 
             ApplyStockScale();
             SetInteractable(isInteractable);
+        }
+
+        public void PlaySpawnFade()
+        {
+            if (spawnFadeDuration <= 0f || _spriteRenderers.Count == 0)
+            {
+                SetAlpha(1f);
+                return;
+            }
+
+            _spawnFadeTween?.Kill();
+            SetAlpha(0f);
+            _spawnFadeTween = DOVirtual.Float(0f, 1f, spawnFadeDuration, SetAlpha)
+                .SetEase(Ease.OutCubic)
+                .SetLink(gameObject, LinkBehaviour.KillOnDisable)
+                .OnComplete(() => _spawnFadeTween = null)
+                .OnKill(() => _spawnFadeTween = null);
         }
 
         public void SetInteractable(bool isInteractable)
@@ -166,10 +219,7 @@ namespace Projects.Scripts.Puzzle
 
             AudioManager.PlayOneShot("PieceClick", 0.5f);
 
-            if (_dishRenderer != null)
-            {
-                _dishRenderer.sortingOrder = s_nextDragSortingOrder++;
-            }
+            UpdateSortingOrders(s_nextDragSortingOrder++);
 
             _dragOffset = (Vector2)transform.position - pos;
             ApplyFullScale(dragScale);
@@ -251,8 +301,25 @@ namespace Projects.Scripts.Puzzle
             {
                 if (sr == null) continue;
                 var c = sr.color;
-                c.a = alpha;
+                c.a = _baseAlphaByRenderer.TryGetValue(sr, out var baseAlpha)
+                    ? baseAlpha * alpha
+                    : alpha;
                 sr.color = c;
+            }
+        }
+
+        private void UpdateSortingOrders(int baseSortingOrder)
+        {
+            foreach (var spriteRenderer in _spriteRenderers)
+            {
+                if (spriteRenderer == null)
+                {
+                    continue;
+                }
+
+                spriteRenderer.sortingOrder = spriteRenderer == _dishRenderer
+                    ? baseSortingOrder
+                    : baseSortingOrder + dirtySortingOrderOffset;
             }
         }
 

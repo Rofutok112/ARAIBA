@@ -24,6 +24,7 @@ namespace Projects.Scripts.UI
         [SerializeField] private TMP_Text washerTimeValueText;
         [SerializeField] private TMP_Text utilizationValueText;
         [SerializeField] private TMP_Text finalScoreValueText;
+        [SerializeField] private TMP_Text bestScoreValueText;
 
         [Header("Buttons")]
         [SerializeField] private Button retryButton;
@@ -56,6 +57,7 @@ namespace Projects.Scripts.UI
             washerTimeValueText.text = $"かどうじかん: {summary.WasherRunningSeconds:0.0}s";
             utilizationValueText.text = $"かどうりつ: {summary.UtilizationRatio * 100f:0.0}%";
             finalScoreValueText.text = $"さいしゅうスコア: {summary.FinalScore:0.000}";
+            bestScoreValueText.text = $"ベストスコア: {summary.BestScore:0.000}";
 
             retryButton.onClick.RemoveAllListeners();
             titleButton.onClick.RemoveAllListeners();
@@ -91,6 +93,7 @@ namespace Projects.Scripts.UI
                 washerTimeValueText == null ||
                 utilizationValueText == null ||
                 finalScoreValueText == null ||
+                bestScoreValueText == null ||
                 retryButton == null ||
                 titleButton == null)
             {

@@ -8,12 +8,14 @@ namespace Projects.Scripts.Puzzle
         private readonly PuzzlePieceShape _shape;
         private readonly Sprite _sprite;
         private readonly Transform _root;
+        private readonly DishDirtVisualSettings _dirtSettings;
 
-        public PuzzlePieceVisualBuilder(PuzzlePieceShape shape, Sprite sprite, Transform root)
+        public PuzzlePieceVisualBuilder(PuzzlePieceShape shape, Sprite sprite, Transform root, DishDirtVisualSettings dirtSettings)
         {
             _shape = shape;
             _sprite = sprite;
             _root = root;
+            _dirtSettings = dirtSettings;
         }
 
         public PuzzlePieceVisualResult Build(float previewAlpha, int sortingOrder, Vector2 cellWorldSize)
@@ -59,7 +61,65 @@ namespace Projects.Scripts.Puzzle
                 1f
             );
 
+            CreateDirtyOverlays(center, sortingOrder, spriteRenderers);
+
             return sr;
+        }
+
+        private void CreateDirtyOverlays(Vector2 center, int sortingOrder, List<SpriteRenderer> spriteRenderers)
+        {
+            if (!_dirtSettings.HasDirtySprites || _shape == null)
+            {
+                return;
+            }
+
+            var overlayCount = _dirtSettings.CalculateOverlayCount(_shape.GetFilledCells()?.Length ?? 0);
+            if (overlayCount <= 0)
+            {
+                return;
+            }
+
+            var width = Mathf.Max(0.5f, _shape.Width);
+            var height = Mathf.Max(0.5f, _shape.Height);
+            var localCenterOffset = new Vector3(
+                (_shape.Width - 1) / 2f - center.x,
+                (_shape.Height - 1) / 2f - center.y,
+                -0.01f);
+
+            for (var i = 0; i < overlayCount; i++)
+            {
+                var dirtySprite = _dirtSettings.GetRandomSprite();
+                if (dirtySprite == null)
+                {
+                    continue;
+                }
+
+                var dirtyObject = new GameObject($"DirtyOverlay_{i}");
+                var dirtyTransform = dirtyObject.transform;
+                dirtyTransform.SetParent(_root, false);
+                dirtyTransform.localPosition = localCenterOffset + new Vector3(
+                    Random.Range(-width * 0.32f, width * 0.32f),
+                    Random.Range(-height * 0.32f, height * 0.32f),
+                    0f);
+                dirtyTransform.localRotation = Quaternion.Euler(0f, 0f, Random.Range(-25f, 25f));
+
+                var dirtyRenderer = dirtyObject.AddComponent<SpriteRenderer>();
+                dirtyRenderer.sortingLayerName = "Dish";
+                dirtyRenderer.sprite = dirtySprite;
+                dirtyRenderer.sortingOrder = sortingOrder + _dirtSettings.SortingOrderOffset;
+                dirtyRenderer.color = new Color(1f, 1f, 1f, Random.Range(_dirtSettings.AlphaMin, _dirtSettings.AlphaMax));
+                spriteRenderers.Add(dirtyRenderer);
+
+                var dirtySpriteSize = dirtySprite.bounds.size;
+                var scaleFactor = Random.Range(_dirtSettings.ScaleRange.x, _dirtSettings.ScaleRange.y);
+                var targetWidth = Mathf.Max(width * scaleFactor, 0.25f);
+                var targetHeight = Mathf.Max(height * scaleFactor, 0.25f);
+                dirtyTransform.localScale = new Vector3(
+                    targetWidth / Mathf.Max(dirtySpriteSize.x, 0.01f),
+                    targetHeight / Mathf.Max(dirtySpriteSize.y, 0.01f),
+                    1f
+                );
+            }
         }
 
         private BoxCollider2D EnsureCollider(Vector2Int[] filledCells, Vector2 center)
@@ -129,6 +189,63 @@ namespace Projects.Scripts.Puzzle
         public List<SpriteRenderer> SpriteRenderers { get; }
         public PuzzlePieceGhostFactory GhostFactory { get; }
         public float PreviewAlpha { get; }
+    }
+
+    internal readonly struct DishDirtVisualSettings
+    {
+        private readonly Sprite[] _sprites;
+
+        public DishDirtVisualSettings(
+            Sprite[] sprites,
+            float countPerFilledCell,
+            int minimumCount,
+            int maximumCount,
+            float alphaMin,
+            float alphaMax,
+            Vector2 scaleRange,
+            int sortingOrderOffset)
+        {
+            _sprites = sprites;
+            CountPerFilledCell = Mathf.Max(0f, countPerFilledCell);
+            MinimumCount = Mathf.Max(0, minimumCount);
+            MaximumCount = Mathf.Max(MinimumCount, maximumCount);
+            AlphaMin = Mathf.Clamp01(Mathf.Min(alphaMin, alphaMax));
+            AlphaMax = Mathf.Clamp01(Mathf.Max(alphaMin, alphaMax));
+            ScaleRange = new Vector2(
+                Mathf.Max(0.05f, Mathf.Min(scaleRange.x, scaleRange.y)),
+                Mathf.Max(0.05f, Mathf.Max(scaleRange.x, scaleRange.y)));
+            SortingOrderOffset = sortingOrderOffset;
+        }
+
+        public float CountPerFilledCell { get; }
+        public int MinimumCount { get; }
+        public int MaximumCount { get; }
+        public float AlphaMin { get; }
+        public float AlphaMax { get; }
+        public Vector2 ScaleRange { get; }
+        public int SortingOrderOffset { get; }
+        public bool HasDirtySprites => _sprites != null && _sprites.Length > 0;
+
+        public int CalculateOverlayCount(int filledCellCount)
+        {
+            if (!HasDirtySprites || filledCellCount <= 0)
+            {
+                return 0;
+            }
+
+            var scaledCount = Mathf.RoundToInt(filledCellCount * CountPerFilledCell);
+            return Mathf.Clamp(Mathf.Max(MinimumCount, scaledCount), MinimumCount, MaximumCount);
+        }
+
+        public Sprite GetRandomSprite()
+        {
+            if (!HasDirtySprites)
+            {
+                return null;
+            }
+
+            return _sprites[Random.Range(0, _sprites.Length)];
+        }
     }
 
     internal sealed class PuzzlePieceGhostFactory

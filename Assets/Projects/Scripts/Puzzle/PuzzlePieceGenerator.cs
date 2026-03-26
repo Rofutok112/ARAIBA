@@ -140,7 +140,7 @@ namespace Projects.Scripts.Puzzle
                     continue;
                 }
 
-                RefillSlot(i, initialCount);
+                RefillSlot(i, initialCount, false);
             }
 
             OnPiecesGenerated?.Invoke();
@@ -165,7 +165,7 @@ namespace Projects.Scripts.Puzzle
 
                 while (PuzzlePieceRefillScheduler.ShouldRefill(state.refillState, state.Pieces.Count, refillSettings.MaxPiecesPerSlot, Time.time))
                 {
-                    RefillSlot(i, 1);
+                    RefillSlot(i, 1, true);
                     PuzzlePieceRefillScheduler.Advance(ref state.refillState, state.shape);
                     generatedAny = true;
                 }
@@ -196,7 +196,7 @@ namespace Projects.Scripts.Puzzle
             return uniqueShapes;
         }
 
-        private void RefillSlot(int slotIndex, int amount)
+        private void RefillSlot(int slotIndex, int amount, bool playSpawnFade)
         {
             if (!_slotRegistry.TryGetState(slotIndex, out var state) || state.shape == null) return;
 
@@ -205,6 +205,10 @@ namespace Projects.Scripts.Puzzle
             for (var i = 0; i < spawnCount; i++)
             {
                 var piece = PieceFactory.Create(state.shape, slotLocalPosition);
+                if (playSpawnFade)
+                {
+                    piece.PlaySpawnFade();
+                }
                 _slotRegistry.RegisterPiece(slotIndex, piece);
             }
 

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzlePieceShape
   width: 5
   height: 5
-  cells: 01010101010100000001010000000101000000010101010101
+  cells: 00010101000101010101010101010101010101010001010100
   dishTypeName: "\u30D7\u30EC\u30FC\u30C8"
   dishSprites:
   - {fileID: 21300000, guid: 98ffadfdd1930ab4cb33b3a0f4e11ce5, type: 3}

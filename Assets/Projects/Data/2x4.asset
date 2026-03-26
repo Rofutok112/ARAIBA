@@ -10,12 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bdd419cc97739e84981d2af968ef6f0c, type: 3}
-  m_Name: 2x2
+  m_Name: 2x4
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.Puzzle.PuzzlePieceShape
-  width: 2
+  width: 4
   height: 2
-  cells: 01010101
+  cells: 0101010101010101
   dishTypeName: "\u30B3\u30C3\u30D7"
   dishSprites:
-  - {fileID: 21300000, guid: 98ffadfdd1930ab4cb33b3a0f4e11ce5, type: 3}
+  - {fileID: 2300498710687281264, guid: 721c573775e16524ca970f7f7a86574c, type: 3}
   refillIntervalSeconds: 4
+  scorePoints: 100
