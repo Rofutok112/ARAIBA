@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Projects.Scripts.UI
 {
@@ -14,7 +15,7 @@ namespace Projects.Scripts.UI
         [SerializeField] private TMP_Text timeText;
 
         [Header("Format")]
-        [SerializeField] private string scorePrefix = "Score: ";
+        [SerializeField] private string pointPrefix = "Score: ";
         [SerializeField] private string timePrefix = "Time: ";
         [SerializeField] private string timeSuffix = "s";
 
@@ -26,7 +27,7 @@ namespace Projects.Scripts.UI
         public void RefreshScore(int score)
         {
             if (scoreText == null) return;
-            scoreText.text = $"{scorePrefix}{Mathf.Max(0, score)}";
+            scoreText.text = $"{pointPrefix}{Mathf.Max(0, score)}";
         }
 
         public void RefreshTime(float seconds)

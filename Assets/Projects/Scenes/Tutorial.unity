@@ -1226,7 +1226,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Projects.Scripts.UI.GameHudTextPresenter
   scoreText: {fileID: 2020380328}
   timeText: {fileID: 1955066190}
-  scorePrefix: 'Score: '
+  pointPrefix: 'Score: '
   timePrefix: 'Time: '
   timeSuffix: s
 --- !u!1 &585442072
@@ -2460,6 +2460,7 @@ MonoBehaviour:
   bodyFadeDuration: 0.2
   buttonsFadeDuration: 0.18
   scorePulseDuration: 0.28
+  formulaHoldDuration: 0.45
   hiddenPanelScale: {x: 0.88, y: 0.88, z: 1}
   hiddenPanelOffset: {x: 0, y: -28}
   scorePulseScale: 1.08
@@ -4422,7 +4423,6 @@ MonoBehaviour:
   buttonsGroup: {fileID: 465470515}
   titleText: {fileID: 1323705866}
   pieceScoreValueText: {fileID: 1393510026}
-  washerTimeValueText: {fileID: 1023394348}
   utilizationValueText: {fileID: 498384519}
   finalScoreValueText: {fileID: 1697668426}
   bestScoreValueText: {fileID: 1719406823}
@@ -5057,6 +5057,7 @@ MonoBehaviour:
   puzzleWindow: {fileID: 1221217988}
   puzzlePieceGenerator: {fileID: 1821184158}
   puzzleGridView: {fileID: 501165247}
+  resetPuzzleOnOpen: 0
   inputStateRouter: {fileID: 1014808100}
   sortingManager: {fileID: 826809244}
   racks:
@@ -5724,7 +5725,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Score
+  m_text: 'Point
 
 '
   m_isRightToLeft: 0

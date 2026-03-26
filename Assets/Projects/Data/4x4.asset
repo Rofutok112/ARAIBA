@@ -18,5 +18,6 @@ MonoBehaviour:
   dishTypeName: "\u304A\u304A\u3056\u3089"
   dishSprites:
   - {fileID: 1985135684197618214, guid: 18af96e4cbc7d4343b8a174e1078169c, type: 3}
+  - {fileID: -3242590284157395201, guid: ee521e92c3fdd044c8c8ead9d8fa02c4, type: 3}
   refillIntervalSeconds: 7
   scorePoints: 100

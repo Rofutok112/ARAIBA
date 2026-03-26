@@ -21,7 +21,6 @@ namespace Projects.Scripts.UI
         [Header("Texts")]
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text pieceScoreValueText;
-        [SerializeField] private TMP_Text washerTimeValueText;
         [SerializeField] private TMP_Text utilizationValueText;
         [SerializeField] private TMP_Text finalScoreValueText;
         [SerializeField] private TMP_Text bestScoreValueText;
@@ -53,10 +52,9 @@ namespace Projects.Scripts.UI
             }
 
             titleText.text = "TIME UP";
-            pieceScoreValueText.text = $"スコア: {summary.PieceScore}";
-            washerTimeValueText.text = $"かどうじかん: {summary.WasherRunningSeconds:0.0}s";
+            pieceScoreValueText.text = $"ポイント: {summary.PieceScore}";
             utilizationValueText.text = $"かどうりつ: {summary.UtilizationRatio * 100f:0.0}%";
-            finalScoreValueText.text = $"さいしゅうスコア: {summary.FinalScore:0.000}";
+            finalScoreValueText.text = $"スコア: {summary.FinalScore:0.000}";
             bestScoreValueText.text = $"ベストスコア: {summary.BestScore:0.000}";
 
             retryButton.onClick.RemoveAllListeners();
@@ -90,7 +88,6 @@ namespace Projects.Scripts.UI
                 buttonsGroup == null ||
                 titleText == null ||
                 pieceScoreValueText == null ||
-                washerTimeValueText == null ||
                 utilizationValueText == null ||
                 finalScoreValueText == null ||
                 bestScoreValueText == null ||
@@ -118,7 +115,14 @@ namespace Projects.Scripts.UI
                 headerGroup,
                 bodyGroup,
                 buttonsGroup,
-                finalScoreValueText);
+                finalScoreValueText,
+                BuildFinalScoreFormulaText(),
+                finalScoreValueText.text);
+        }
+
+        private string BuildFinalScoreFormulaText()
+        {
+            return $"スコア: ポイント x かどうりつ";
         }
 
         private void SetButtonsInteractable(bool interactable)

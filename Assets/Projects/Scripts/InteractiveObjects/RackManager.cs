@@ -22,6 +22,9 @@ namespace Projects.Scripts.InteractiveObjects
         [Tooltip("パズルグリッドビュー")]
         [SerializeField] private PuzzleGridView puzzleGridView;
 
+        [Tooltip("パズルを開くたびに PuzzlePieceGenerator のストックも含めてリセットする")]
+        [SerializeField] private bool resetPuzzleOnOpen = true;
+
         [Header("Input")]
         [SerializeField] private InputStateRouter inputStateRouter;
 
@@ -91,7 +94,14 @@ namespace Projects.Scripts.InteractiveObjects
             _activeRack = rack;
             rack.SetState(RackState.Packing);
 
-            puzzlePieceGenerator.ResetPuzzle();
+            if (resetPuzzleOnOpen)
+            {
+                puzzlePieceGenerator.ResetPuzzle();
+            }
+            else
+            {
+                puzzlePieceGenerator.ResetGridOnly();
+            }
             puzzleWindow.SetActive(true);
             PuzzleOpened?.Invoke(rack);
             PuzzleWindowActivated?.Invoke();

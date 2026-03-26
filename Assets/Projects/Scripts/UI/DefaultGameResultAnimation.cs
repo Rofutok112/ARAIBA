@@ -13,6 +13,7 @@ namespace Projects.Scripts.UI
         [SerializeField, Min(0.1f)] private float bodyFadeDuration = 0.2f;
         [SerializeField, Min(0.1f)] private float buttonsFadeDuration = 0.18f;
         [SerializeField, Min(0.1f)] private float scorePulseDuration = 0.28f;
+        [SerializeField, Min(0f)] private float formulaHoldDuration = 0.45f;
         [SerializeField] private Vector3 hiddenPanelScale = new(0.88f, 0.88f, 1f);
         [SerializeField] private Vector2 hiddenPanelOffset = new(0f, -28f);
         [SerializeField, Min(1f)] private float scorePulseScale = 1.08f;
@@ -33,6 +34,7 @@ namespace Projects.Scripts.UI
 
             if (targets.FinalScoreText != null)
             {
+                targets.FinalScoreText.text = targets.FinalScoreFormulaText;
                 targets.FinalScoreText.rectTransform.localScale = Vector3.one;
             }
         }
@@ -56,6 +58,8 @@ namespace Projects.Scripts.UI
 
             if (targets.FinalScoreText != null)
             {
+                sequence.AppendInterval(formulaHoldDuration);
+                sequence.AppendCallback(() => targets.FinalScoreText.text = targets.FinalScoreResolvedText);
                 sequence.Append(targets.FinalScoreText.rectTransform.DOScale(Vector3.one * scorePulseScale, scoreHalfDuration).SetEase(Ease.OutQuad));
                 sequence.Append(targets.FinalScoreText.rectTransform.DOScale(Vector3.one, scoreHalfDuration).SetEase(Ease.InQuad));
             }

@@ -45,6 +45,7 @@ namespace Projects.Scripts.UI
         [SerializeField] private string titleSceneName = "Title";
 
         private TutorialStep _currentStep;
+        private bool _isEndingTutorial;
 
         private void Awake()
         {
@@ -116,9 +117,19 @@ namespace Projects.Scripts.UI
 
         private async UniTaskVoid ShowFinalLoopHintAsync()
         {
+            if (_isEndingTutorial)
+            {
+                return;
+            }
+
             _currentStep = TutorialStep.FinalLoopHint;
+            _isEndingTutorial = true;
             overlayPresenter.Show(finalLoopHintMessage, false);
-            await UniTask.Delay(System.TimeSpan.FromSeconds(finalMessageDuration));
+            Canvas.ForceUpdateCanvases();
+            await UniTask.NextFrame();
+            await UniTask.Delay(
+                System.TimeSpan.FromSeconds(Mathf.Max(1f, finalMessageDuration)),
+                ignoreTimeScale: true);
 
             if (this == null || _currentStep != TutorialStep.FinalLoopHint)
             {

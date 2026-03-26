@@ -271,6 +271,16 @@ namespace Projects.Scripts.Puzzle
             GenerateAllPieces();
         }
 
+        public void ResetGridOnly()
+        {
+            if (gridView != null && gridView.Grid != null)
+            {
+                gridView.Grid.Clear();
+            }
+
+            CleanupPlacedPieces();
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
